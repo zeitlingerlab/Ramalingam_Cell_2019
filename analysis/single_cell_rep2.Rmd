@@ -1,0 +1,130 @@
+
+```{r "knitr config", cache = FALSE, include=FALSE}
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+options(knitr.figure_dir = "single_cell_rep2/")
+source("shared/knitr_common.r")
+
+```
+
+```{r setup}
+
+library(Seurat)
+library(cowplot)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(RColorBrewer)
+
+```
+
+
+
+Look at changes in gene expression of lola target genes
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+
+```{r plot, fig.width=14, fig.height=10}
+
+wt.data<-Read10X(data.dir = "/singlecell_data/processed/MOLNG-2184/L31409/outs/filtered_gene_bc_matrices/dm6.Ens_84/")
+mut.data<-Read10X(data.dir = "/singlecell_data/processed/MOLNG-2184/L31410/outs/filtered_gene_bc_matrices/dm6.Ens_84/")
+
+wt <- CreateSeuratObject(raw.data = wt.data)
+wt <- NormalizeData(object = wt)
+wt <- ScaleData(object = wt)
+wt <- FindVariableGenes(object = wt, do.plot = FALSE)
+
+
+mut <- CreateSeuratObject(raw.data = mut.data)
+mut <- NormalizeData(object = mut)
+mut <- ScaleData(object = mut)
+mut <- FindVariableGenes(object = mut, do.plot = FALSE)
+
+
+hvg.wt <- rownames(x = head(x = wt@hvg.info, n = 2000))
+hvg.mut <- rownames(x = head(x = mut@hvg.info, n = 2000))
+hvg.union <- union(x = hvg.wt, y = hvg.mut)
+
+
+wt@meta.data[, "condition"] <- "wt"
+mut@meta.data[, "condition"] <- "mut"
+
+embryos <- RunCCA(object = wt, object2 = mut,add.cell.id1="wt",add.cell.id2="mut", genes.use = hvg.union)
+
+
+# visualize results of CCA plot CC1 versus CC2 and look at a violin plot
+p1 <- DimPlot(object = embryos, reduction.use = "cca", group.by = "condition", pt.size = 0.5, 
+    do.return = TRUE)
+p2 <- VlnPlot(object = embryos, features.plot = "CC1", group.by = "condition", do.return = TRUE)
+plot_grid(p1, p2)
+
+
+embryos <- CalcVarExpRatio(object = embryos, reduction.type = "pca", grouping.var = "condition", 
+    dims.use = 1:15)
+
+# We discard cells where the variance explained by CCA is <2-fold (ratio <
+# 0.5) compared to PCA
+
+embryos.all.save <- embryos
+embryos <- SubsetData(object = embryos, subset.name = "var.ratio.pca", accept.low = 0.5)
+
+embryos <- AlignSubspace(object = embryos, reduction.type = "cca", grouping.var = "condition", 
+    dims.align = 1:15)
+    
+
+embryos <- RunTSNE(object = embryos, reduction.use = "cca.aligned", dims.use = 1:15, 
+    do.fast = TRUE)
+embryos <- FindClusters(object = embryos, reduction.type = "cca.aligned", dims.use = 1:15, 
+    save.SNN = TRUE)
+p1 <- TSNEPlot(object = embryos, group.by = "condition", do.return = TRUE, pt.size = 0.5)
+p2 <- TSNEPlot(object = embryos, do.return = TRUE, pt.size = 0.5)
+plot_grid(p1, p2)
+
+FeaturePlot(object = embryos, features.plot = c("elav","Mef2","TwdlM"), min.cutoff = "q9", cols.use = c("lightgrey", 
+    "blue"), pt.size = 0.5)
+    
+    
+g3<- FeatureHeatmap(object = embryos, features.plot = "Gip", 
+    group.by = "condition", sep.scale = TRUE, max.exp = 10,min.exp=1, pt.size = 0.5, cols.use = c("lightgrey", 
+         "red"),key.position = 'bottom')
+
+FeatureHeatmap(object = embryos, features.plot = "PPO2", 
+    group.by = "condition", sep.scale = TRUE, max.exp = 10,min.exp=1, pt.size = 0.5, cols.use = c("lightgrey", 
+         "red"))
+
+g1<-VlnPlot(object = embryos,features.plot = "Gip" , group.by = "condition" )
+
+g2<-VlnPlot(object = embryos,features.plot = "PPO2" , group.by = "condition")
+
+FetchData(object = embryos, vars.all = c('Gip','PPO1', 'PPO2')) %>% as.data.frame() %>% {.$cell_barcode <- row.names(.);.} %>% separate(col = cell_barcode, into = c("group", "barcode"), sep = "_") %>% ggplot(aes(group,Gip))+geom_jitter(aes(color=PPO2),alpha=0.5)+geom_violin()+theme_cowplot() + scale_colour_gradient(low = "grey",high = "red")
+
+plot_grid(g3$plot,g1,labels = c("A","B"), align = 'h', axis = 'l')
+
+g4<-ggdraw() + draw_plot(g3$plot + theme(legend.justification = "bottom"), 0, 0, 0.5, 0.5) + draw_plot(g1 +  theme(legend.justification = "top"), 0.5, 0.08, 0.4, 0.4)
+
+plot_grid(g4,g2,labels = c("A","B"), align = 'h', axis = 'l')
+
+
+Pfk<- VlnPlot(object = embryos,features.plot = "Pfk" , group.by = "condition")
+Got2<- VlnPlot(object = embryos,features.plot = "Got2" , group.by = "condition")
+Pgd<- VlnPlot(object = embryos,features.plot = "Pgd" , group.by = "condition")
+Npc2a<- VlnPlot(object = embryos,features.plot = "Npc2a" , group.by = "condition")
+Dbi<- VlnPlot(object = embryos,features.plot = "Dbi" , group.by = "condition")
+Gip<- VlnPlot(object = embryos,features.plot = "Gip" , group.by = "condition")
+ftz_f1<- VlnPlot(object = embryos,features.plot = "ftz-f1" , group.by = "condition")
+
+plot_grid(Pfk,Got2,Pgd,Gip,Dbi,ftz_f1,labels = c("A)","B)","C)","D)","E)","F)"),scale=0.9, align = 'h', axis = 'l')
+
+saveRDS(embryos,file=figure_path("embryo_single_cell.RData"))
+
+```
+```{r nUMI_nGene,fig.width=24, fig.height=20,dev=c("png","CairoPDF")}
+VlnPlot(embryos,features.plot = c("nUMI","nGene"),group.by = 'condition') -> nUMI_nGene
+nUMI_nGene
+```
+
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

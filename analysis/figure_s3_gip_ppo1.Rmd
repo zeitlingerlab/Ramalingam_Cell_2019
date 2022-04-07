@@ -1,0 +1,60 @@
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+# Plot the Gip and PPO1 PPO2 positive cells in the Wt and Mutant conditions at various time points
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+
+library(ggplot2)
+library(cowplot)
+library(magrittr)
+library(dplyr)
+theme_set(theme_cowplot())
+
+# Output folder for this document
+
+options(knitr.figure_dir = "figure_s3_gip_ppo1")
+source("shared/knitr_common.r")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+```
+
+
+
+```{r files}
+
+data<- read.csv("data/reformated_data.csv",sep=",")
+data$factor %<>% factor(.,levels=c("PPO1 PPO2","Gip"))
+data$condition %<>% factor(.,levels=c("WT","Mut"))
+````
+
+
+```{r plot,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+ggplot(data, aes(timepoint,cells, fill=factor)) + facet_wrap(~condition)+
+  stat_summary(geom = "bar", fun.y = "mean", position = "dodge") +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", position = "dodge",size=0.25) +
+  theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))+
+  scale_y_continuous(breaks = c(0,40))
+````
+
+
+```{r plot_2,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+library(tidyr)
+data$index<-c(1:7,1:7,8:15,8:15,16:19,16:19,20:26,20:26,27:33,27:33,34:40,34:40)
+data %<>% spread(factor, cells)
+data %<>% dplyr::mutate(ratio=Gip/`PPO1 PPO2`)
+
+ggplot(data, aes(timepoint,ratio,fill=condition)) + facet_wrap(~condition)+
+  stat_summary(geom = "bar", fun.y = "mean", position = "dodge") +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", position = "dodge",size=0.25) +
+  theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
+
+ggplot(data, aes(timepoint,ratio,fill=condition)) + facet_wrap(~condition)+
+  geom_boxplot(outlier.color = NA)+ geom_jitter()+
+  theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
+````
+
+``` {r session_info, echo=FALSE}
+sessionInfo()
+````

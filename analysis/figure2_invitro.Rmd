@@ -1,0 +1,55 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r "knitr config", cache = FALSE, include=FALSE}
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+options(knitr.figure_dir = "figure2_invitro/")
+source("shared/knitr_common.r")
+
+```
+
+```{r setup, include=FALSE}
+
+library(cowplot)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(RColorBrewer)
+library(ggplot2)
+
+```
+
+Annotate the clusters based on MCC correlation and manual identification with markers and replot TSNE projection 
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+
+```{r plot_clusters,fig.width=24, fig.height=20,dev=c("png","CairoPDF")}
+data<-read.csv(file = "/lola_paper/aws/analysis/data/PI-Rep1_all_samples.Result.csv")
+data[1:11,c(47,48,50,52,54,56)] ->data_m
+colnames(data_m)<- c("Sample","0nM","36nM","71nM","143nM","357nM")
+data_m %>% gather(key = "conc", "value",-Sample) -> temp
+temp$conc %<>% factor(levels = c("0nM","36nM","71nM","143nM","357nM"))
+temp$Sample %<>% factor(levels = c("CONTROL","R0","R0.5","R4","R4.5","R6","R6.5","R7","R8","R6+R7","L6+R7"))
+temp %>% ggplot(aes(Sample,value,fill = conc))+geom_bar(stat = "identity", position = "dodge")+scale_fill_manual(values = c("#ffffcc","#a1dab4","#41b6c4","#2c7fb8","#253494"))
+
+```
+
+```{r plot_clusters_2,fig.width=24, fig.height=20,dev=c("png","CairoPDF")}
+data<-read.csv(file = "/lola_paper/aws/analysis/data/PI-Rep1_all_samples.Result.csv")
+data[1:11,c(47,49,51,53,55,57)] ->data_m
+colnames(data_m)<- c("Sample","0nM","36nM","71nM","143nM","357nM")
+data_m %>% gather(key = "conc", "value",-Sample) -> temp
+temp$conc %<>% factor(levels = c("0nM","36nM","71nM","143nM","357nM"))
+temp$Sample %<>% factor(levels = c("CONTROL","R0","R0.5","R4","R4.5","R6","R6.5","R7","R8","R6+R7","L6+R7"))
+temp %>% ggplot(aes(Sample,value,fill = conc))+geom_bar(stat = "identity", position = "dodge")+scale_fill_manual(values = c("#ffffcc","#a1dab4","#41b6c4","#2c7fb8","#253494"))
+
+```
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

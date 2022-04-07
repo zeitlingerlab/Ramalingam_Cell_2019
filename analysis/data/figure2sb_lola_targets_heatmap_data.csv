@@ -1,0 +1,9 @@
+label,factor,window_upstream,window_downstream,ip,wce,normalization,replicate,minimum_value,max_quantile,color
+wt_14-17h,ATAC,150,150,../bw/dme_emb_orer_14_17h_atac_8.bam_from0to100_rpm.bw,NA,FALSE,1,0,0.85,"""#6C1E10"""
+wt_14-17h,ATAC,150,150,../bw/dme_emb_orer_14_17h_atac_9.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""
+orc4_14-17h,ATAC,150,150,../bw/dme_emb_28267_14_17h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,1,0,0.85,"""#6C1E10"""
+orc4_14-17h,ATAC,150,150,../bw/dme_emb_28267_14_17h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""
+orc4_17-20h,ATAC,150,150,../bw/dme_emb_28267_17_20h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,1,0,0.85,"""#6C1E10"""
+orc4_17-20h,ATAC,150,150,../bw/dme_emb_28267_17_20h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""
+ore50_14-17h,ATAC,150,150,dme_emb_ore50_orc4_14_17h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,1,0,0.85,"""#6C1E10"""
+ore50_14-17h,ATAC,150,150,dme_emb_ore50_orc4_14_17h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""

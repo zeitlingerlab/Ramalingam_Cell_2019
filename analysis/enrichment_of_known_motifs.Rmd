@@ -1,0 +1,181 @@
+# Lola14_17hrs peaks vs lola_2-4hrs peaks motif differences
+
+**Project:** `r knitr.project_name`
+
+**Author:** [Vivek](mailto:vir@stowers.org)
+
+**Generated:** `r format(Sys.time(), "%a %b %d %Y, %I:%M %p")`
+
+## Overview
+
+Lola14_17hrs peaks vs lola_2-4hrs peaks motif differences
+
+## Step 1: Load necessary packages
+
+We'll need the following packages to perform this analysis:
+
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+library(knitcitations)
+library(xtable)
+library(GenomicRanges)
+library(rtracklayer)
+library(plyr)
+```
+
+## Step 2: Read in peaks
+
+We'll first read in our lola peaks from a BED file and select the top 1000 by score:
+
+``` {r read_twist_peaks}
+lola_14.gr <- import("/n/projects/vir/lola/14-17/lola_pi_peaks_peaks.bed", asRangedData=FALSE)
+lola_14.gr <- lola_14.gr[order(mcols(lola_14.gr)$score, decreasing=TRUE)]
+lola_14.gr <- lola_14.gr[1:1000]
+lola_14.gr
+```
+
+``` {r read_control_regions}
+
+ctrl.gr <- import("/n/projects/vir/lola/lola_pi_peaks_peaks.bed")
+ctrl.gr <- ctrl.gr[order(mcols(ctrl.gr)$score, decreasing=TRUE)]
+ctrl.gr <- ctrl.gr[1:1000]
+ctrl.gr
+```
+
+As we are counting motifs within these two sets of regions, it is important that the regions be as similar as possible in width (the number of regions in each set does not need to be the same). We'll resize both sets to be 100bp around their centers.
+
+``` {r resize_regions}
+lola_14.gr <- resize(lola_14.gr, width=200, fix="center")
+ctrl.gr <- resize(ctrl.gr, width=200, fix="center")
+```
+
+## Step 3: Load FIMO motif occurrences
+
+We'll now load the FIMO **GRanges** object that holds the locations of known motifs genome-wide.
+
+``` {r load_fimo}
+fimo.gr <- readRDS("/n/projects/jjj/motifs/matches.granges.rds")
+````
+
+## Step 4: Count motifs in each set of regions
+
+Now we need to count the number of regions in each set that contain each motif. 
+
+``` {r count_motifs}
+
+motif_counts <- function(regions.gr, motifs.gr) {
+  ol <- as.data.frame(findOverlaps(query=motifs.gr, subject=regions.gr, type="within", ignore.strand=TRUE))
+  ol$motif <- mcols(motifs.gr)$name[ol$queryHits]
+  ol$queryHits <- NULL
+  hits.df <- ddply(ol, .(motif), summarize, with_motif=length(unique(subjectHits)))
+
+  all.motifs <- unique(as.character(mcols(motifs.gr)$name))
+  missing.motifs <- all.motifs[!all.motifs %in% hits.df$motif]
+  
+  if(length(missing.motifs) > 0) {
+    missing.df <- data.frame(stringsAsFactors=FALSE, motif=missing.motifs, with_motif=0)
+    hits.df <- rbind(hits.df, missing.df)
+  }
+
+  hits.df$without_motif <- length(regions.gr) - hits.df$with_motif
+  hits.df[order(hits.df$with_motif, decreasing=TRUE), ]
+}
+
+counts.lola_14 <- motif_counts(lola_14.gr, fimo.gr)
+counts.ctrl <- motif_counts(ctrl.gr, fimo.gr)
+
+head(counts.lola_14)
+head(counts.ctrl)
+```
+
+## Step 5: Perform statistical test 
+
+For each motif, we can test whether the proportion of regions with the motif are different between our lola_14 and lola_2-4hrs  sets.
+
+``` {r perform_test, warning=FALSE}
+
+proportion_test <- function(values, enrichment=TRUE) {
+  stopifnot(is.logical(enrichment))
+  m <- matrix(values, nrow=2, byrow=TRUE)
+  alt.test <- ifelse(enrichment, "greater", "less")
+  prop.test(m, alternative=alt.test)$p.value
+}
+
+single_motif_test <- function(row.df, enrichment) {
+  proportion_test(as.numeric(c(row.df$s1_W, row.df$s1_WO, row.df$s2_W, row.df$s2_WO)), enrichment)
+}
+
+motif_count_comparison <- function(set1.df, set2.df) {
+  stopifnot(nrow(set1.df) == nrow(set2.df))
+  
+  names(set1.df)[2:3] <- c("s1_W", "s1_WO")
+  names(set2.df)[2:3] <- c("s2_W", "s2_WO")
+  
+  set.df <- merge(set1.df, set2.df)
+  stopifnot(nrow(set.df) == nrow(set1.df))
+  
+  set_test.df   <- subset(set.df, s1_W > 0 | s2_W > 0)
+  
+  e_set_test.df <- set_test.df
+  e_set_test.df$test_type <- "enrichment"
+  
+  e_set_test.df$pvalue <- as.vector(by(e_set_test.df, 1:nrow(e_set_test.df), single_motif_test, enrichment=TRUE))
+
+  d_set_test.df <- set_test.df
+  d_set_test.df$test_type <- "depletion"
+  
+  d_set_test.df$pvalue <- as.vector(by(d_set_test.df, 1:nrow(d_set_test.df), single_motif_test, enrichment=FALSE))
+
+  set_test.df <- rbind(e_set_test.df, d_set_test.df)
+
+  set_notest.df <- subset(set.df, s1_W == 0 & s2_W == 0)
+  if(nrow(set_notest.df) > 0) {
+    set_notest.df$pvalue <- 1
+    e_set_notest.df <- set_notest.df
+    e_set_notest.df$test_type <- "enrichment"
+    
+    d_set_notest.df$pvalue <- 1
+    d_set_notest.df$test_type <- "depletion"
+    
+    set.df <- rbind(set_test.df, e_set_notest.df, d_set_notest.df)
+  } else {
+    set.df <- set_test.df
+  }
+  
+  stopifnot(nrow(set.df) == 2 * nrow(set1.df))
+  set.df <- transform(set.df, enrichment = (s1_W/(s1_W+s1_WO)) / (s2_W/(s2_W+s2_WO)) )
+  set.df <- transform(set.df, enrichment = ifelse(test_type == "enrichment", enrichment, -1 / enrichment))
+  set.df
+}
+
+results.df <- motif_count_comparison(counts.lola_14, counts.ctrl)
+```
+
+We can now correct the p-values for multiple testing:
+
+``` {r correct_pvalues}
+results.df$padj <- p.adjust(results.df$pvalue, method="BH")
+```
+
+As we have test results for both enrichment and depletion for each motif, we'll select only the one with the lowest p-value:
+
+``` {r select_enrichment_or_depletion_results}
+results.df <- arrange(results.df, motif, padj)
+results.df <- results.df[!duplicated(results.df$motif), ]
+```
+
+We can now filter for significant enrichment/depletion:
+
+``` {r select_significant_results}
+sig_motifs.df <- subset(results.df, padj < 0.01)
+sig_motifs.df <- arrange(sig_motifs.df, padj)
+head(sig_motifs.df, 25)
+```
+
+
+## Session information
+
+For reproducibility, this analysis was performed with the following R/Bioconductor session:
+
+``` {r session_info, echo=FALSE, comment=NA}
+sessionInfo()
+````

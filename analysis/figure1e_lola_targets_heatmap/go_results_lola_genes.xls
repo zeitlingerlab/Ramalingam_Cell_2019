@@ -1,0 +1,198 @@
+GOBPID	Pvalue	OddsRatio	ExpCount	Count	Size	Term	Gene_Names
+GO:0048878	1.55873632421387e-07	4.32718439509059	5.52382975108317	21	257	chemical homeostasis	Acbp2, Ald1, amon, Atpalpha, cac, CG6908, Desat1, Gapdh2, Glut1, Hnf4, Itp-r83A, KaiR1D, norpA, Npc2a, Pfk, Pgd, Plc21C, Raf, Tpi, Vha68-2, Zip71B
+GO:0051046	2.79676151839947e-07	7.70034765055512	1.84844108402005	12	86	regulation of secretion	cac, CaMKII, Exn, Glut1, IA-2, Itp-r83A, Mctp, nemy, Rab26, Rab27, sona, Syt12
+GO:0055086	4.34320898381573e-07	3.52994337428586	7.99558236343556	25	372	nucleobase-containing small molecule metabolic process	AcCoAS, Adk1, Ald1, CG11883, CG12065, CG42813, CG43373, CG7920, cn, Gapdh2, Gdh, Gpo1, Gycalpha99B, Gycbeta100B, Idh, ND-15, Nos, Pde1c, Pde8, Pfas, Pfk, Pgd, Shmt, Tpi, Vha68-2
+GO:0032879	5.81120964146244e-07	3.21230195712954	9.83934036042162	28	463	regulation of localization	ATP8B, Ca-beta, cac, CaMKII, CG18675, cnc, Exn, Glut1, IA-2, Mctp, Nedd4, nemy, olf186-F, Ptpmeg, Pu, qvr, Rab26, Rab27, Rab32, Rel, Rgk3, sdt, Sema1a, sona, Syt12, Tie, tim, ttk
+GO:0042593	1.72930844001153e-06	11.7204081632653	0.859740039079093	8	40	glucose homeostasis	Ald1, Desat1, Gapdh2, Glut1, Hnf4, Pfk, Pgd, Tpi
+GO:0032502	2.24535613044676e-06	1.88643798378179	60.3107637413984	93	2806	developmental process	Actbeta, AGBE, AGO1, Ald1, amon, Atpalpha, BicC, bip1, Ca-alpha1D, Ca-beta, cac, CaMKII, CanB2, CG34375, CG42674, CG5758, CG5921, chinmo, cnc, Cpr62Ba, cyc, Desat1, Dif, dl, dpr12, Drep1, Eip75B, Ets21C, Exn, exp, fray, fwd, Gld, Got2, IA-2, inaE, Itp-r83A, jim, kirre, krimp, Liprin-gamma, Mdh2, mfr, Mlc1, Mmp1, Mmp2, Mp, Msp300, Mur11Da, Myd88, Nedd4, nolo, norpA, Nos, Npc2a, olf186-F, Oli, osa, Pde8, Pfk, Pka-R2, plum, Ptp99A, Ptpmeg, Pu, Raf, Rbp6, Rel, sdt, Sema1a, serp, Sh, shot, shu, slv, sNPF, sona, stet, Syn1, Syn2, Thiolase, Tie, tim, tow, Tpi, trc, Tsp42Ef, ttk, vari, Vha68-2, wake, wun, yellow-c
+GO:0098655	6.02662589965662e-06	4.1815959973254	4.27720669441849	16	199	cation transmembrane transport	Atpalpha, Ca-alpha1D, Ca-beta, cac, Elk, Itp-r83A, KaiR1D, Nedd4, Plc21C, Prestin, qvr, Rgk3, Sh, SLO2, Vha68-2, Zip71B
+GO:0006733	6.37422094999719e-06	7.97904423136406	1.33259706057259	9	62	oxidoreduction coenzyme metabolic process	Ald1, cn, Gapdh2, Gdh, Gpo1, Idh, Pfk, Pgd, Tpi
+GO:0098660	6.84983139872633e-06	4.13565971034325	4.32019369637244	16	201	inorganic ion transmembrane transport	Atpalpha, Ca-alpha1D, Ca-beta, cac, Elk, Itp-r83A, KaiR1D, Nedd4, Plc21C, Prestin, qvr, Rgk3, Sh, SLO2, Vha68-2, Zip71B
+GO:0070838	1.20306872737593e-05	6.36414191969748	1.80545408206609	10	84	divalent metal ion transport	Ca-alpha1D, Ca-beta, cac, Itp-r83A, KaiR1D, olf186-F, Plc21C, Prestin, Rgk3, Zip71B
+GO:0060402	1.36323264046192e-05	46.2409638554217	0.171948007815819	4	8	calcium ion transport into cytosol	cac, Itp-r83A, KaiR1D, Plc21C
+GO:0035556	1.53528540851962e-05	2.5278521933041	13.6368738838337	31	644	intracellular signal transduction	Actbeta, Ca-alpha1D, Ca-beta, cac, CG14408, CG17746, CG42674, CG43373, CG8500, DopEcR, Exn, fray, fwd, Gycalpha99B, Gycbeta100B, norpA, Nos, olf186-F, Pde8, Pka-R2, Plc21C, Rab26, Rab27, Rab32, Raf, REPTOR, Rgk3, sNPF, Srpk79D, Stacl, trc
+GO:0044282	2.54067381917448e-05	4.40220238095238	3.28850564947753	13	153	small molecule catabolic process	CG15117, CG17029, cn, Gdh, Got2, GstZ2, Nos, Pfk, Pgd, Shmt, Thiolase, Tpi, yip2
+GO:0065008	2.60505679026027e-05	2.30595395475294	17.5465679795577	36	889	regulation of biological quality	Acbp2, Ald1, Arc1, ATP8B, CanB2, CG31729, CG6908, chinmo, cnc, cyc, ERp60, Esyt2, Exn, Gapdh2, Hnf4, inaE, IRSp53, Kank, l(2)01289, Mctp, mfr, Msp300, nemy, Nos, Pfk, Pgd, Rab32, Raf, Rel, Sema1a, Shmt, sNPF, Stacl, tim, Tpi, Zip71B
+GO:0050896	2.94627481214873e-05	1.97163548581774	33.865191907733	57	1714	response to stimulus	Actbeta, Arc1, Atpalpha, Ca-alpha1D, Ca-beta, cac, CaMKII, CG14408, CG17029, CG17746, CG31760, CG32547, CG3277, CG42674, CG43373, CG6426, CG8500, cnc, Ect4, ERp60, Ets21C, Exn, exp, fray, fwd, GABA-B-R1, Ggt-1, Gycalpha99B, Gycbeta100B, Hsp67Bc, inaE, Mmp1, mol, Myd88, Npc2a, olf186-F, osa, Pde1c, Plc21C, qvr, Rab26, Rab27, Rab32, Rel, Rgk3, Srpk79D, Stacl, stet, Tep3, Tie, tim, tow, Tpi, trc, ttk, wake, Xrp1
+GO:0051234	4.12686704715691e-05	1.86332123411978	38.7527822614901	63	1803	establishment of localization	Arc1, ATP8B, Atpalpha, Ca-alpha1D, Ca-beta, cac, CaMKII, cana, CanB2, CG10344, CG11537, CG13743, CG15279, CG31100, CG31729, CG33970, CG3703, CG42837, CG44098, CG5646, CG5789, CG8925, chinmo, Efr, Eglp2, Elk, Esyt2, Exn, Glut1, IA-2, Itp-r83A, KaiR1D, Mctp, mfr, mol, Msp300, Nedd4, nemy, norpA, Npc2a, olf186-F, Plc21C, Prestin, qvr, Rab26, Rab27, Rab32, Rel, Rgk3, Rim2, sdt, Sfxn1-3, Sh, SLO2, slv, sona, Syt12, tim, Tpst, VGlut, Vha68-2, wake, Zip71B
+GO:0070588	4.18066220095525e-05	11.2535510204082	0.661424685481129	6	31	calcium ion transmembrane transport	Ca-alpha1D, cac, Itp-r83A, KaiR1D, Plc21C, Prestin
+GO:0072522	4.58040121895917e-05	4.84749362786746	2.53623311528332	11	118	purine-containing compound biosynthetic process	AcCoAS, Ald1, CG43373, Gapdh2, Gycalpha99B, Gycbeta100B, Nos, Pfas, Pfk, Shmt, Tpi
+GO:0098916	5.46166575779716e-05	3.16689612015019	6.23311528332342	18	290	anterograde trans-synaptic signaling	Arc1, Atpalpha, Ca-beta, cac, CaMKII, CanB2, Esyt2, Exn, Gycbeta100B, KaiR1D, Mctp, mfr, nemy, Plc21C, qvr, Sh, Srpk79D, VGlut
+GO:0010959	7.53866272080766e-05	9.96818970503181	0.730779033217229	6	34	regulation of metal ion transport	Ca-beta, cac, Nedd4, olf186-F, qvr, Rgk3
+GO:0043436	7.57218653586523e-05	2.6621103117506	9.45714042987002	23	440	oxoacid metabolic process	AcCoAS, Ald1, CG15117, CG31075, cn, D2hgdh, Desat1, Gapdh2, Gdh, Gip, Got2, GstZ2, Idh, inaE, Mdh2, Nos, Pfk, Pgd, Pu, Shmt, Thiolase, Tpi, yip2
+GO:0046395	8.47090426633691e-05	4.94823478449209	2.25681760258262	10	105	carboxylic acid catabolic process	CG15117, cn, Gdh, Got2, GstZ2, Nos, Pgd, Shmt, Thiolase, yip2
+GO:0006811	8.5388357396414e-05	2.52696590118302	10.8327244923966	25	504	ion transport	ATP8B, Atpalpha, Ca-alpha1D, Ca-beta, cac, CG13743, CG15279, CG31729, CG5646, Efr, Elk, Itp-r83A, KaiR1D, Nedd4, olf186-F, Plc21C, Prestin, qvr, Rgk3, Sh, SLO2, Syt12, VGlut, Vha68-2, Zip71B
+GO:0006163	8.6317315650245e-05	3.2986647670192	5.3088947413134	16	247	purine nucleotide metabolic process	AcCoAS, Adk1, Ald1, CG43373, CG7920, Gapdh2, Gycalpha99B, Gycbeta100B, ND-15, Nos, Pde1c, Pde8, Pfas, Pfk, Tpi, Vha68-2
+GO:0048699	0.000137339522511395	2.11681429927238	18.2049953274998	35	847	generation of neurons	Actbeta, Ca-alpha1D, Ca-beta, cac, CG5758, CG5921, chinmo, cnc, Dif, dl, dpr12, jim, Liprin-gamma, Mmp1, Mmp2, Mp, Nedd4, Npc2a, Oli, osa, Pka-R2, plum, Ptp99A, Ptpmeg, Raf, Rel, sdt, Sema1a, Sh, shot, Syn2, tow, trc, ttk, wake
+GO:0019637	0.000158796790615521	3.42333509980569	4.4682994615251	14	218	organophosphate metabolic process	CG11883, CG17029, CG18135, cn, fwd, Gdh, Gpo1, Idh, Mocs1, norpA, Nos, Plc21C, sgll, wun
+GO:0008038	0.000168801508065262	4.51646090534979	2.45025911137541	10	114	neuron recognition	CG5758, dpr12, Mmp1, Mmp2, Nedd4, Npc2a, Ptp99A, Sema1a, shot, trc
+GO:0007275	0.000173742319688196	1.8028780080304	36.6881258941345	58	1784	multicellular organism development	Actbeta, AGBE, AGO1, amon, Atpalpha, bip1, Ca-alpha1D, Ca-beta, CG34375, CG42674, CG5758, CG5921, chinmo, Cpr62Ba, cyc, Dif, dl, dpr12, Exn, exp, fray, Gld, Got2, IA-2, inaE, Itp-r83A, jim, krimp, Mdh2, Mmp1, Mmp2, Mp, Msp300, Myd88, nolo, Nos, Npc2a, olf186-F, Oli, Pka-R2, Ptp99A, Rel, sdt, serp, Sh, slv, sNPF, sona, Thiolase, tim, tow, Tpi, Tsp42Ef, vari, Vha68-2, wake, wun, yellow-c
+GO:0006873	0.000181444854282779	4.47305506564766	2.47175261235239	10	115	cellular ion homeostasis	Acbp2, Atpalpha, cac, Itp-r83A, KaiR1D, norpA, Plc21C, Raf, Vha68-2, Zip71B
+GO:0038061	0.000187064216838524	46.06	0.128961005861864	3	6	NIK/NF-kappaB signaling	Dif, dl, Rel
+GO:0019674	0.000236015368521397	16.8046732384082	0.32240251465466	4	15	NAD metabolic process	cn, Gdh, Gpo1, Pfk
+GO:0009991	0.000243851803065552	3.67430080293151	3.56792116217823	12	166	response to extracellular stimulus	Arc1, CaMKII, cyc, Desat1, DopEcR, Itp-r83A, Raf, Rel, REPTOR, Sh, sNPF, whd
+GO:0007416	0.000272440726609785	3.62655601659751	3.61090816413219	12	168	synapse assembly	AGO1, Atpalpha, cac, CaMKII, Got2, Liprin-gamma, Nedd4, Nos, plum, Sema1a, Syn1, Syn2
+GO:0072524	0.000285886725744008	15.7379972565158	0.336856460961473	4	16	pyridine-containing compound metabolic process	Gdh, Gpo1, Idh, Pgd
+GO:0051480	0.000289055361174424	10.0762622720898	0.601818027355365	5	28	regulation of cytosolic calcium ion concentration	cac, Itp-r83A, KaiR1D, norpA, Plc21C
+GO:0009259	0.00030278443600272	3.05253002488549	5.33038824229037	15	248	ribonucleotide metabolic process	AcCoAS, Adk1, Ald1, CG43373, CG7920, Gapdh2, Gycalpha99B, Gycbeta100B, ND-15, Pde1c, Pde8, Pfas, Pfk, Tpi, Vha68-2
+GO:0030534	0.000304656769770947	4.60628964772574	2.15891439788342	9	102	adult behavior	Atpalpha, cac, cyc, Gpo1, Itp-r83A, norpA, Plc21C, Sh, sNPF
+GO:0032410	0.000322162399798693	34.542	0.150454506838841	3	7	negative regulation of transporter activity	Nedd4, qvr, Rgk3
+GO:0034766	0.000322162399798693	34.542	0.150454506838841	3	7	negative regulation of ion transmembrane transport	Nedd4, qvr, Rgk3
+GO:0035001	0.000322162399798693	34.542	0.150454506838841	3	7	dorsal trunk growth, open tracheal system	Mmp1, ttk, vari
+GO:0051282	0.000322162399798693	34.542	0.150454506838841	3	7	regulation of sequestering of calcium ion	Itp-r83A, norpA, Plc21C
+GO:0030154	0.000342165915615309	1.75063491212185	35.7866791266672	56	1665	cell differentiation	Actbeta, AGO1, BicC, Ca-alpha1D, Ca-beta, cac, CanB2, CG5758, CG5921, chinmo, cnc, Dif, dl, dpr12, Drep1, Eip75B, Ets21C, inaE, Itp-r83A, jim, kirre, krimp, Liprin-gamma, Mdh2, mfr, Mmp1, Mmp2, Mp, Msp300, Mur11Da, Nedd4, norpA, Npc2a, Oli, osa, Pfk, Pka-R2, plum, Ptp99A, Ptpmeg, Raf, Rbp6, Rel, sdt, Sema1a, Sh, shot, shu, Syn2, Tie, tow, Tpi, trc, ttk, wake, wun
+GO:0009152	0.000367038367311316	4.48273456574817	2.21383060062866	9	103	purine ribonucleotide biosynthetic process	AcCoAS, Ald1, CG43373, Gapdh2, Gycalpha99B, Gycbeta100B, Pfas, Pfk, Tpi
+GO:0055085	0.000417866097626764	2.21951219512195	12.7148936170213	26	600	transmembrane transport	Atpalpha, Ca-alpha1D, cac, CG11537, CG13743, CG15279, CG31100, CG33970, CG44098, CG5789, CG8925, Efr, Eglp2, Elk, Glut1, Itp-r83A, KaiR1D, Plc21C, Prestin, Rim2, Sfxn1-3, Sh, SLO2, VGlut, Vha68-2, Zip71B
+GO:0003144	0.000460183708258138	Inf	0.0429870019539546	2	2	embryonic heart tube formation	Mmp1, Mmp2
+GO:0007505	0.000460183708258138	Inf	0.0429870019539546	2	2	adult fat body development	Mmp1, Mmp2
+GO:0030574	0.000460183708258138	Inf	0.0429870019539546	2	2	collagen catabolic process	Mmp1, Mmp2
+GO:0044057	0.000469198712964184	5.62237174095879	1.39707756350353	7	65	regulation of system process	AGO1, cac, cyc, Itp-r83A, Nos, qvr, tim
+GO:0009743	0.000474140867366032	8.91129032258065	0.666298530286297	5	31	response to carbohydrate	Desat1, DopEcR, FASN1, Pfk, sgll
+GO:0032412	0.000502877978829268	13.2002294893861	0.386883017585592	4	18	regulation of ion transmembrane transporter activity	Ca-beta, Nedd4, qvr, Rgk3
+GO:0046058	0.000507280443835138	27.6312	0.171948007815819	3	8	cAMP metabolic process	CG43373, Pde1c, Pde8
+GO:0009117	0.000591900249355326	6.48427128427128	1.04958318860716	6	51	nucleotide metabolic process	CG11883, cn, Gdh, Gpo1, Idh, Pgd
+GO:0046390	0.000679887732061607	4.08781632977877	2.40727210942146	9	112	ribose phosphate biosynthetic process	AcCoAS, Ald1, CG43373, Gapdh2, Gycalpha99B, Gycbeta100B, Pfas, Pfk, Tpi
+GO:0099536	0.000695990427827279	3.23970037453184	4.00548461736224	12	190	synaptic signaling	Arc1, Atpalpha, Ca-beta, CaMKII, Gycbeta100B, inaE, KaiR1D, Plc21C, qvr, Sh, Srpk79D, VGlut
+GO:0007626	0.00071768230895233	3.22740960284529	4.01928468269476	12	187	locomotory behavior	amon, Atpalpha, cac, cyc, Gpo1, Itp-r83A, nemy, norpA, Pka-R2, Plc21C, Sh, tim
+GO:1901606	0.000744153454227376	6.19325236167341	1.09616854982584	6	51	alpha-amino acid catabolic process	cn, Gdh, Got2, GstZ2, Nos, Shmt
+GO:0007249	0.000748858730665772	23.024	0.193441508792796	3	9	I-kappaB kinase/NF-kappaB signaling	Dif, dl, Myd88
+GO:0006796	0.000758546503193537	3.67867132867133	2.95475446018025	10	153	phosphate-containing compound metabolic process	CG11883, CG18135, cn, Gdh, Gpo1, Idh, Mocs1, norpA, Plc21C, sgll
+GO:0046496	0.000790656520551735	7.83948087431694	0.741323579448792	5	35	nicotinamide nucleotide metabolic process	Ald1, Gapdh2, Idh, Pgd, Tpi
+GO:0007399	0.00088895759917429	1.91163558005943	19.3788675342584	34	933	nervous system development	Actbeta, Ca-alpha1D, Ca-beta, CG5758, CG5921, chinmo, cnc, Dif, dl, dpr12, fray, inaE, Itp-r83A, jim, Mmp1, Mmp2, Mp, nolo, Npc2a, olf186-F, Oli, osa, Pka-R2, Ptp99A, Ptpmeg, Raf, Rel, sdt, Sh, shot, tow, trc, ttk, wake
+GO:0034762	0.000934942727947807	10.867942357666	0.451363520516524	4	21	regulation of transmembrane transport	Ca-beta, Nedd4, qvr, Rgk3
+GO:0035690	0.000934942727947807	10.867942357666	0.451363520516524	4	21	cellular response to drug	Itp-r83A, Pde8, Pka-R2, Sh
+GO:0003012	0.000963927571908054	7.47073361082206	0.773766035171183	5	36	muscle system process	Arc1, Ca-alpha1D, Chd64, Mlc1, Mp
+GO:0098771	0.000975771727766773	3.5496944756204	3.05207713873078	10	142	inorganic ion homeostasis	Atpalpha, cac, CG6908, Itp-r83A, KaiR1D, norpA, Plc21C, Raf, Vha68-2, Zip71B
+GO:0055080	0.00102974018770548	3.52269562795879	3.07357063970776	10	143	cation homeostasis	Atpalpha, cac, CG6908, Itp-r83A, KaiR1D, norpA, Plc21C, Raf, Vha68-2, Zip71B
+GO:0048935	0.00105285760284432	19.7331428571429	0.214935009769773	3	10	peripheral nervous system neuron development	Dif, dl, Rel
+GO:0051186	0.00106939939499272	3.50333902779935	3.08850012863391	10	147	cofactor metabolic process	CG7920, cn, Gdh, Ggt-1, Gpo1, GstT1, GstZ2, Idh, Pgd, Shmt
+GO:0051050	0.00109961409779797	4.80179205003307	1.60764244285227	7	76	positive regulation of transport	cac, Glut1, Itp-r83A, olf186-F, qvr, Rab27, sona
+GO:0042594	0.0011450216740408	3.46989788142052	3.11655764166171	10	145	response to starvation	Arc1, CaMKII, cyc, Desat1, DopEcR, Itp-r83A, Raf, Rel, REPTOR, whd
+GO:1901293	0.0011450216740408	3.46989788142052	3.11655764166171	10	145	nucleoside phosphate biosynthetic process	AcCoAS, Ald1, CG43373, Gapdh2, Gycalpha99B, Gycbeta100B, Nos, Pfas, Pfk, Tpi
+GO:0008015	0.00123937711581904	7.01673998044966	0.816753037125138	5	38	blood circulation	cac, CG32473, cyc, Nos, tim
+GO:0046928	0.00133738085548469	9.72225745085606	0.494350522470478	4	23	regulation of neurotransmitter secretion	cac, Exn, Mctp, nemy
+GO:0003053	0.00136092225048216	91.7689243027888	0.064480502930932	2	3	circadian regulation of heart rate	cyc, tim
+GO:0006809	0.00136092225048216	91.7689243027888	0.064480502930932	2	3	nitric oxide biosynthetic process	Nos, Rel
+GO:0032959	0.00136092225048216	91.7689243027888	0.064480502930932	2	3	inositol trisphosphate biosynthetic process	norpA, Plc21C
+GO:0034769	0.00136092225048216	91.7689243027888	0.064480502930932	2	3	basement membrane disassembly	Mmp1, Mmp2
+GO:0002804	0.00142477867860821	17.265	0.23642851074675	3	11	positive regulation of antifungal peptide production	Dif, Myd88, Rel
+GO:0070509	0.00142477867860821	17.265	0.23642851074675	3	11	calcium ion import	Ca-alpha1D, cac, KaiR1D
+GO:0050789	0.00142614902120391	1.56395505324033	58.749525788095	79	3068	regulation of biological process	Actbeta, AGO1, Arc1, BicC, Ca-alpha1D, cana, CG10631, CG10654, CG13284, CG14408, CG17029, CG17746, CG31759, CG31760, CG32547, CG3277, CG32812, CG42674, CG43373, CG6770, CG8500, Chd64, cn, cyc, Desat1, Dh44-R2, Dif, dl, DopEcR, Drep1, Ect4, Eip75B, Eip78C, ERp60, ETHR, Ets21C, exp, fray, fwd, GABA-B-R1, gce, Gycalpha99B, Gycbeta100B, Hnf4, Hsp67Bc, inaE, jim, KaiR1D, kirre, krimp, l(2)01289, Mdh2, mfr, Mp, Myd88, Nos, Npc2a, Oli, osa, Pde1c, Pde8, Pka-R2, Raf, REPTOR, Sh, Shmt, sNPF, Srpk79D, Stacl, stet, tapas, tow, trc, uri, VGlut, wake, Wdr62, wun, Xrp1
+GO:0017144	0.00145846686561765	2.29850372980144	8.85532240251466	19	412	drug metabolic process	AcCoAS, Adk1, Ald1, cn, exp, Gapdh2, GstZ2, Mdh2, ND-15, Nos, obst-B, Pfk, Pu, Rel, serp, sgll, Shmt, Tpi, Vha68-2
+GO:0006066	0.00163055424512711	4.46124290010023	1.71948007815819	7	80	alcohol metabolic process	CG17029, CG17270, Gpo1, norpA, Plc21C, Pu, Tpi
+GO:0016053	0.00163447166490139	3.29681794470527	3.26701214850055	10	152	organic acid biosynthetic process	AcCoAS, Ald1, cn, Desat1, Gapdh2, Got2, Pfk, Pu, Shmt, Tpi
+GO:0005975	0.00171346194373771	2.64020083682008	5.67428425792201	14	264	carbohydrate metabolic process	AGBE, Ald1, CG15117, CG17029, FASN1, Gapdh2, Gld, Gpo1, Mdh2, Pfk, Pgd, serp, sNPF, Tpi
+GO:0048511	0.00171649119791669	3.27347549569772	3.28850564947753	10	153	rhythmic process	cyc, norpA, Pka-R2, Plc21C, qvr, Sh, Shmt, sNPF, tim, wake
+GO:0009648	0.00186968540009787	15.3453333333333	0.257922011723728	3	12	photoperiodism	norpA, Plc21C, tim
+GO:0042391	0.00188197116915693	4.34151761517615	1.76246708011214	7	82	regulation of membrane potential	cac, Elk, Itp-r83A, qvr, Sh, SLO2, VGlut
+GO:0006006	0.00195899174470535	6.25599389712293	0.902727041033047	5	42	glucose metabolic process	Gapdh2, Gld, Pfk, sNPF, Tpi
+GO:0022410	0.00195899174470535	6.25599389712293	0.902727041033047	5	42	circadian sleep/wake cycle process	cyc, qvr, Sh, tim, wake
+GO:0042749	0.00195899174470535	6.25599389712293	0.902727041033047	5	42	regulation of circadian sleep/wake cycle	cyc, qvr, Sh, tim, wake
+GO:1901292	0.00195899174470535	6.25599389712293	0.902727041033047	5	42	nucleoside phosphate catabolic process	Ald1, CG11883, Gapdh2, Pfk, Tpi
+GO:0072503	0.00208744964615295	4.97194910352805	1.33259706057259	6	62	cellular divalent inorganic cation homeostasis	cac, Itp-r83A, KaiR1D, norpA, Plc21C, Zip71B
+GO:0018212	0.00214667137316728	8.39430449069003	0.55883102540141	4	26	peptidyl-tyrosine modification	CG14408, Ptpmeg, Tie, Tpst
+GO:0009744	0.0023426691399002	13.9149193548387	0.277371642298538	3	13	response to sucrose	Desat1, Pfk, sgll
+GO:0002218	0.00239222283943364	13.8096	0.279415512700705	3	13	activation of innate immune response	Ect4, Mmp2, Myd88
+GO:0019722	0.00241540919885757	5.93413978494624	0.945714042987002	5	44	calcium-mediated signaling	Ca-alpha1D, Ca-beta, cac, norpA, olf186-F
+GO:0032940	0.00242668670986628	2.9202854326088	4.0304992332595	11	190	secretion by cell	cac, CaMKII, CanB2, Esyt2, Exn, Mctp, mfr, nemy, Rab26, Syt12, Tpst
+GO:0055114	0.00245046181920044	2.02622742754322	12.1403434206052	23	569	oxidation-reduction process	AGBE, CG10863, CG14997, CG31075, CG31674, CG6084, CG7737, D2hgdh, Desat1, FASN1, Gapdh2, Gld, Hnf4, Idh, Mdh2, ND-15, Nos, Pfk, Pgd, Rim2, sgll, Thiolase, yip2
+GO:0006875	0.00247420401305273	4.12025316455696	1.84844108402005	7	86	cellular metal ion homeostasis	Atpalpha, cac, Itp-r83A, KaiR1D, norpA, Plc21C, Zip71B
+GO:0006096	0.00247798122201965	8.0286362842675	0.580324526378388	4	27	glycolytic process	Ald1, Gapdh2, Pfk, Tpi
+GO:0051188	0.00253253991453462	3.65458183273309	2.3642851074675	8	110	cofactor biosynthetic process	AcCoAS, Ald1, Gapdh2, Mocs1, Pfk, Pu, sgll, Tpi
+GO:0048523	0.00260287238510435	1.71344513092086	24.677908071557	39	1172	negative regulation of cellular process	AGO1, BicC, CaMKII, CG10631, CG14408, CG17746, CG32812, chinmo, Cp110, cyc, Dif, dl, Drep1, Ect4, Eip75B, Eip78C, gce, Hnf4, Itp-r83A, jim, Kank, krimp, Liprin-gamma, Nedd4, norpA, Pde8, Plc21C, plum, Ptpmeg, qvr, Raf, Sema1a, shot, tapas, Tie, tim, tow, ttk, uri
+GO:0010817	0.00264249738689953	4.06839430894309	1.86993458499703	7	87	regulation of hormone levels	amon, CG32473, Desat1, Eip75B, Glut1, Itp-r83A, Npc2a
+GO:0035152	0.00264249738689953	4.06839430894309	1.86993458499703	7	87	regulation of tube architecture, open tracheal system	Atpalpha, Mmp1, serp, shot, ttk, vari, Vha68-2
+GO:0016310	0.00266833741453102	1.98004389438197	12.9605810891173	24	603	phosphorylation	Actbeta, Ald1, CaMKII, CG14408, CG17029, CG17746, CG3277, chinmo, DopEcR, fray, fwd, Gapdh2, Hsp67Bc, ND-15, Pde8, Pfk, Pka-R2, Ptpmeg, Raf, sNPF, Srpk79D, Tie, Tpi, trc
+GO:0006090	0.00267049558056361	5.78528225806452	0.967207543963979	5	45	pyruvate metabolic process	Ald1, CG31075, Gapdh2, Pfk, Tpi
+GO:0071805	0.00267049558056361	5.78528225806452	0.967207543963979	5	45	potassium ion transmembrane transport	Atpalpha, Elk, qvr, Sh, SLO2
+GO:0030388	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	fructose 1,6-bisphosphate metabolic process	Ald1, Pfk
+GO:0051209	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	release of sequestered calcium ion into cytosol	Itp-r83A, Plc21C
+GO:0051482	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	positive regulation of cytosolic calcium ion concentration involved in phospholipase C-activating G protein-coupled signaling pathway	Itp-r83A, norpA
+GO:0051643	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	endoplasmic reticulum localization	Esyt2, Msp300
+GO:0097156	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	fasciculation of motor neuron axon	Mmp1, Mmp2
+GO:1901385	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	regulation of voltage-gated calcium channel activity	Ca-beta, Rgk3
+GO:2001258	0.0026832122476092	45.8804780876494	0.0859740039079093	2	4	negative regulation of cation channel activity	qvr, Rgk3
+GO:0023052	0.00271523112707278	3.06511056511057	3.50400927446624	10	195	signaling	Arc1, Atpalpha, CaMKII, CanB2, Esyt2, Mctp, mfr, nemy, Sh, shot
+GO:0008285	0.00281945114668412	4.01781591889993	1.891428085974	7	88	negative regulation of cell proliferation	CG13284, CG6770, Mmp2, Nos, osa, Rel, Xrp1
+GO:0007186	0.00297168849972021	2.69427624133892	4.75006371591199	12	221	G protein-coupled receptor signaling pathway	CG31760, CG32547, CG43373, Dh44-R2, DopEcR, ETHR, GABA-B-R1, Gycalpha99B, inaE, Itp-r83A, norpA, sNPF
+GO:0040007	0.00298360602558831	2.145522995523	9.43564692889304	19	439	growth	Atpalpha, cac, CaMKII, Desat1, Liprin-gamma, Mmp1, Nos, plum, Ptpmeg, Raf, Sema1a, Sh, shot, sNPF, Syn1, Syn2, ttk, vari, Vha68-2
+GO:0019732	0.0029966367864128	12.5530909090909	0.300909013677682	3	14	antifungal humoral response	Dif, Myd88, Rel
+GO:0046068	0.0029966367864128	12.5530909090909	0.300909013677682	3	14	cGMP metabolic process	Gycalpha99B, Gycbeta100B, Pde1c
+GO:1900150	0.0029966367864128	12.5530909090909	0.300909013677682	3	14	regulation of defense response to fungus	Dif, Myd88, Rel
+GO:1901575	0.00315227552472751	1.79815478128731	18.5059043411775	31	861	organic substance catabolic process	AGO1, Ald1, CG11883, CG12520, CG15117, CG17029, CG18135, CG18641, CG31633, CG31759, CG32085, CG32473, CG34375, cn, Drep1, Gapdh2, Gdh, Ggt-1, Got2, Gpo1, GstZ2, Hnf4, inaE, Nedd4, Nos, Pfk, Pgd, Shmt, Thiolase, Tpi, yip2
+GO:0045807	0.0032383502017539	5.50883256528418	1.01019454591793	5	47	positive regulation of endocytosis	Nedd4, norpA, Rel, sdt, tim
+GO:0008016	0.00324273769949285	7.38506024096386	0.623311528332342	4	29	regulation of heart contraction	cac, cyc, Nos, tim
+GO:0009135	0.00324273769949285	7.38506024096386	0.623311528332342	4	29	purine nucleoside diphosphate metabolic process	Ald1, Gapdh2, Pfk, Tpi
+GO:0009185	0.00324273769949285	7.38506024096386	0.623311528332342	4	29	ribonucleoside diphosphate metabolic process	Ald1, Gapdh2, Pfk, Tpi
+GO:0046031	0.00324273769949285	7.38506024096386	0.623311528332342	4	29	ADP metabolic process	Ald1, Gapdh2, Pfk, Tpi
+GO:0019725	0.00331584755853468	2.6554450794645	4.81454421884292	12	224	cellular homeostasis	Acbp2, Atpalpha, cac, ERp60, Itp-r83A, KaiR1D, l(2)01289, norpA, Plc21C, Raf, Vha68-2, Zip71B
+GO:0042221	0.00334428938924932	1.73296946776304	21.784588893672	35	1037	response to chemical	AGO1, ATP8B, Chd64, cyc, Desat1, Dh44-R2, Dif, dl, Eip75B, ETHR, FASN1, gce, Hnf4, Idh, Mmp2, Mp, Nedd4, norpA, Nos, Oli, Or63a, Pfk, Prestin, Ptp99A, Ptpmeg, Raf, REPTOR, Sema1a, sgll, Sh, shot, sNPF, Syt12, VGlut, wun
+GO:0006836	0.00338487748692808	3.18163189269747	3.0305836377538	9	141	neurotransmitter transport	cac, CanB2, CG15279, Esyt2, Exn, Mctp, mfr, nemy, VGlut
+GO:0060627	0.00351906134777105	3.44973544973545	2.49324611332937	8	116	regulation of vesicle-mediated transport	Nedd4, norpA, Rab26, Rab27, Rel, sdt, Syt12, tim
+GO:0042133	0.00367936002358049	7.1004016064257	0.644805029309319	4	30	neurotransmitter metabolic process	inaE, Nos, Rel, Shmt
+GO:0045938	0.00368679214088564	11.506	0.32240251465466	3	15	positive regulation of circadian sleep/wake cycle, sleep	qvr, Sh, wake
+GO:0071236	0.00368679214088564	11.506	0.32240251465466	3	15	cellular response to antibiotic	Itp-r83A, Pde8, Pka-R2
+GO:0048638	0.00369158097678892	2.61769757792145	4.87902472177385	12	227	regulation of developmental growth	cac, CaMKII, Desat1, Liprin-gamma, Nos, plum, Raf, Sema1a, shot, sNPF, Syn1, Syn2
+GO:0030431	0.00386207295296575	4.34741902834008	1.50454506838841	6	70	sleep	CanB2, cyc, qvr, Sh, tim, wake
+GO:1901617	0.00386207295296575	4.34741902834008	1.50454506838841	6	70	organic hydroxy compound biosynthetic process	CG17270, norpA, Plc21C, Pu, sgll, yellow-c
+GO:2000026	0.00395392690112953	1.94219858156028	12.6166850734857	23	587	regulation of multicellular organismal development	cac, CaMKII, cnc, Desat1, Eip75B, fwd, kirre, Liprin-gamma, mfr, Nedd4, norpA, osa, plum, Ptpmeg, Pu, Raf, Sema1a, shot, Syn1, Syn2, Tie, trc, ttk
+GO:0007154	0.00402160595718341	2.72728633811603	4.31262679934306	11	240	cell communication	Arc1, Atpalpha, CaMKII, CanB2, Esyt2, Liprin-gamma, Mctp, mfr, nemy, Sh, shot
+GO:0006165	0.00415420730598264	6.83682879666815	0.666298530286297	4	31	nucleoside diphosphate phosphorylation	Ald1, Gapdh2, Pfk, Tpi
+GO:0071702	0.00421163789793714	1.83236678591602	15.7332427151474	27	732	organic substance transport	Arc1, ATP8B, CaMKII, CG10344, CG13743, CG15279, CG31729, CG3703, CG5646, Efr, Esyt2, Glut1, Itp-r83A, mol, Npc2a, Prestin, Rab26, Rab27, Rab32, Rim2, sdt, slv, sona, Syt12, tim, Tpst, VGlut
+GO:0007165	0.0042219704551267	2.00225697696198	11.2299616578419	21	583	signal transduction	CG17029, CG3277, Chd64, Ect4, Eip75B, exp, gce, Mmp2, Mp, Nedd4, Npc2a, osa, Pde1c, Ptpmeg, qvr, Sema1a, stet, Tie, tow, ttk, wake
+GO:0072525	0.00429728340618965	30.9986504723347	0.106074806168527	2	5	pyridine-containing compound biosynthetic process	cn, sgll
+GO:0035626	0.0044086581677718	30.5843293492696	0.107467504884887	2	5	juvenile hormone mediated signaling pathway	Chd64, gce
+GO:0046184	0.0044086581677718	30.5843293492696	0.107467504884887	2	5	aldehyde biosynthetic process	sgll, Tpi
+GO:0051928	0.0044086581677718	30.5843293492696	0.107467504884887	2	5	positive regulation of calcium ion transport	cac, olf186-F
+GO:1900075	0.0044086581677718	30.5843293492696	0.107467504884887	2	5	positive regulation of neuromuscular synaptic transmission	KaiR1D, VGlut
+GO:2001057	0.0044086581677718	30.5843293492696	0.107467504884887	2	5	reactive nitrogen species metabolic process	Nos, Rel
+GO:0006091	0.00444897297330074	2.6813446969697	4.3631806983264	11	203	generation of precursor metabolites and energy	AGBE, Ald1, D2hgdh, FASN1, Gapdh2, Gpo1, Mdh2, ND-15, Pfk, Rim2, Tpi
+GO:0052652	0.00446619063218613	10.62	0.343896015631637	3	16	cyclic purine nucleotide metabolic process	CG43373, Gycalpha99B, Gycbeta100B
+GO:0046148	0.00508304983284734	4.09025958561562	1.59051907229632	6	74	pigment biosynthetic process	cl, cn, Pu, Rab32, Shmt, yellow-c
+GO:0050803	0.00511428348556371	2.78022731726435	3.82584317390196	10	178	regulation of synapse structure or activity	cac, CaMKII, KaiR1D, Liprin-gamma, Nedd4, plum, Sh, Syn1, Syn2, VGlut
+GO:1903532	0.00522454196177139	6.36421548262014	0.709285532240251	4	33	positive regulation of secretion by cell	Glut1, Itp-r83A, Rab27, sona
+GO:0050804	0.00531184119397674	3.54758731005065	2.11950970377937	7	100	modulation of chemical synaptic transmission	Arc1, Gycbeta100B, KaiR1D, Plc21C, qvr, Sh, VGlut
+GO:0007629	0.00533798788732735	9.86057142857143	0.365389516608614	3	17	flight behavior	Gpo1, Itp-r83A, Plc21C
+GO:0010647	0.00541808088418117	2.11135147190009	8.53291988786	17	397	positive regulation of cell communication	Actbeta, CG42674, DopEcR, Exn, Glut1, Itp-r83A, KaiR1D, Mp, Myd88, olf186-F, Pde8, Raf, Rel, sNPF, sona, stet, VGlut
+GO:0023056	0.00541808088418117	2.11135147190009	8.53291988786	17	397	positive regulation of signaling	Actbeta, CG42674, DopEcR, Exn, Glut1, Itp-r83A, KaiR1D, Mp, Myd88, olf186-F, Pde8, Raf, Rel, sNPF, sona, stet, VGlut
+GO:0035150	0.00545979934977066	4.81770833333333	1.1391555517798	5	53	regulation of tube size	Atpalpha, Mmp1, serp, ttk, vari
+GO:0019220	0.00579396132738927	2.3640180878553	5.82473876476085	13	271	regulation of phosphate metabolic process	Actbeta, CG14408, CG17746, CG32812, chinmo, DopEcR, fray, Nos, Pde8, Pka-R2, Raf, sNPF, uri
+GO:0019363	0.00582291093041899	6.15153949129853	0.730779033217229	4	34	pyridine nucleotide biosynthetic process	Ald1, Gapdh2, Pfk, Tpi
+GO:0006813	0.00591371017514078	4.7189763001975	1.16064905275678	5	54	potassium ion transport	Atpalpha, Elk, qvr, Sh, SLO2
+GO:0048149	0.00591371017514078	4.7189763001975	1.16064905275678	5	54	behavioral response to ethanol	AcCoAS, DopEcR, dpr9, Pka-R2, Shmt
+GO:0019693	0.00603452678030821	23.896186440678	0.123947573995313	2	6	ribose phosphate metabolic process	CG42813, Pgd
+GO:0097305	0.00607483408842802	3.12783399073915	2.72967462407612	8	127	response to alcohol	AcCoAS, DopEcR, dpr9, Eip75B, Itp-r83A, Pka-R2, Shmt, whd
+GO:0045216	0.00633042473485526	23.2967479674797	0.127027488475329	2	6	cell-cell junction organization	Mmp1, Mmp2
+GO:0099643	0.00637247205512562	3.42152332049636	2.19233709965169	7	102	signal release from synapse	cac, CanB2, Esyt2, Exn, Mctp, mfr, nemy
+GO:0055074	0.00639355787648612	4.6241935483871	1.18214255373375	5	55	calcium ion homeostasis	cac, Itp-r83A, KaiR1D, norpA, Plc21C
+GO:0035159	0.00646526371112627	5.95258453167509	0.752272534194206	4	35	regulation of tube length, open tracheal system	Atpalpha, Mmp1, serp, vari
+GO:0019682	0.00651945514323843	22.9362549800797	0.128961005861864	2	6	glyceraldehyde-3-phosphate metabolic process	Pgd, Tpi
+GO:0009636	0.00654407188306355	2.85321177651388	3.35298615240846	9	156	response to toxic substance	AcCoAS, DopEcR, dpr9, Itp-r83A, Pde8, Pka-R2, Shmt, whd, Zip71B
+GO:0048666	0.00679601924893138	1.97466633712308	10.1983002832861	19	495	neuron development	Actbeta, Ca-alpha1D, Ca-beta, cac, CG5921, chinmo, cnc, jim, Liprin-gamma, Mp, Oli, Pka-R2, plum, Ptpmeg, Raf, sdt, Sh, Syn2, ttk
+GO:0060541	0.00716112939748732	2.39067714310938	5.3088947413134	12	247	respiratory system development	Atpalpha, exp, Mmp1, Mmp2, Pu, Raf, serp, shot, ttk, vari, Vha68-2, wun
+GO:0046173	0.00736976870399906	8.6265	0.408376518562569	3	19	polyol biosynthetic process	norpA, Plc21C, Pu
+GO:0060359	0.00736976870399906	8.6265	0.408376518562569	3	19	response to ammonium ion	cyc, Pka-R2, Sh
+GO:0007043	0.00743403172158727	4.44556451612903	1.22512955568771	5	57	cell-cell junction assembly	Atpalpha, kirre, sdt, vari, wun
+GO:0030198	0.00743403172158727	4.44556451612903	1.22512955568771	5	57	extracellular matrix organization	CG5455, CG5758, Mmp1, Mmp2, Mp
+GO:0009584	0.00788719513060927	5.59084824145065	0.795259536148161	4	37	detection of visible light	cac, Gycalpha99B, norpA, Sh
+GO:0044087	0.00798715962475807	2.19040446304045	6.74895930677088	14	314	regulation of cellular component biogenesis	cac, CaMKII, chinmo, cnc, Cp110, IRSp53, Kank, Liprin-gamma, Mmp2, Nedd4, plum, shot, Syn1, Syn2
+GO:0009649	0.00853447792133945	8.11835294117647	0.429870019539546	3	20	entrainment of circadian clock	norpA, Plc21C, tim
+GO:0048072	0.00853447792133945	8.11835294117647	0.429870019539546	3	20	compound eye pigmentation	cn, Pu, Rab32
+GO:0032787	0.00861247351163511	2.93255813953488	2.89749275115129	8	137	monocarboxylic acid metabolic process	AcCoAS, D2hgdh, Desat1, Gip, inaE, Pgd, Thiolase, yip2
+GO:0071310	0.00887621802032459	2.16081259634442	6.83493331067879	14	318	cellular response to organic substance	Chd64, Dh44-R2, DopEcR, Eip75B, ETHR, FASN1, gce, Hnf4, Itp-r83A, Mmp2, Pka-R2, Raf, Sh, Shmt
+GO:0002224	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	toll-like receptor signaling pathway	Ect4, Myd88
+GO:0006116	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	NADH oxidation	Gdh, Gpo1
+GO:0007561	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	imaginal disc eversion	Mmp1, Mmp2
+GO:0016486	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	peptide hormone processing	amon, CG32473
+GO:0043650	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	dicarboxylic acid biosynthetic process	cn, Got2
+GO:0045332	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	phospholipid translocation	ATP8B, CG31729
+GO:0046339	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	diacylglycerol metabolic process	inaE, norpA
+GO:0048562	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	embryonic organ morphogenesis	Mmp1, Mmp2
+GO:0060612	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	adipose tissue development	Mmp1, Mmp2
+GO:0071329	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	cellular response to sucrose stimulus	DopEcR, FASN1
+GO:1903169	0.00899837224061434	18.3474103585657	0.150454506838841	2	7	regulation of calcium ion transmembrane transport	Ca-beta, Rgk3
+GO:0035148	0.00950040395867921	5.27045324153758	0.838246538102115	4	39	tube formation	Mmp1, Mmp2, shot, Vha68-2
+GO:0044550	0.00950040395867921	5.27045324153758	0.838246538102115	4	39	secondary metabolite biosynthetic process	cn, Desat1, Rab32, yellow-c
+GO:0016311	0.00950981536852987	2.5209654098543	4.19123269051058	10	195	dephosphorylation	CanB2, CG17029, CG17746, CG32812, CG7378, IA-2, Ptp99A, Ptpmeg, uri, wun
+GO:0044275	0.00980106712023806	7.66666666666667	0.451363520516524	3	21	cellular carbohydrate catabolic process	CG15117, Pgd, Tpi
+GO:0071684	0.00980106712023806	7.66666666666667	0.451363520516524	3	21	organism emergence from protective structure	amon, cyc, tim

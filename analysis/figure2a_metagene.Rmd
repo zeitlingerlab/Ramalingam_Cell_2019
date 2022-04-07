@@ -1,0 +1,157 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(Hmisc)
+library(cowplot)
+theme_set(theme_cowplot())
+
+# Output folder for this document
+options(knitr.figure_dir = "figure2a_metagene")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("shared/knitr_common.r")
+source("shared/metagene_common.r")
+source("shared/flybase.r")
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+build_read_plot<-function(gene_group,mnase_lst,gene_lst){
+  mnase_lst %>% lapply(get_metagene_reads,gene_lst[[gene_group]],before_tss=1000, after_tss=999, smooth=41,
+                                        normalization_target=20000000*150) %>% bind_rows(.id="sample")
+}
+
+build_enrichment_plot<-function(gene_group,sample_lst,gene_lst){
+  sample_lst %>% lapply(get_metagene_enrichment,gene_lst[[gene_group]],before_tss=1000, after_tss=999, smooth=31)%>% bind_rows(.id="sample")
+}
+
+metagene_compatible_df<-function(region.gr){
+  
+region.gr %>% as.data.frame ->region.df
+region.df$strand<-ifelse(region.df$strand=='+',1,-1)
+region.df$chr<-region.df$seqnames
+region.df  
+}
+```
+
+
+Look at the pol II and MNase profile at Lola target genes
+
+### Lola targets are defined by Lola binding- top 1000 peaks
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+```{r files}
+
+mnase_2_4.cov<-import("../bw/Dme_MNase_2-4h_1.bam_from100to200.bw") %>% {coverage(.,weight=.$score)}
+mnase_14_17.cov<- ((import("../bw/Dme_MNase_14-17h_1.bam_from100to200.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_14-17h_2.bam_from100to200.bw") %>% {coverage(.,weight=.$score)}))/2
+mnase_mut.cov<- ((import("../bw/Dme_MNase_orc4_14-17h_1rr.bam_from100to200.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_1.bam_from100to200.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_2rr.bam_from100to200.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_2.bam_from100to200.bw") %>% {coverage(.,weight=.$score)}))/4
+
+mnase_lst<-list(Mnase_2_4hrs=mnase_2_4.cov,Mnase_14_17hrs=mnase_14_17.cov,Mnase_14_17hrs_mut=mnase_mut.cov)
+ 
+ 
+rpb3_2_4.cov<-import("../bw/Dme_emb_2-4h_Rpb3_1.bw") %>% {coverage(.,weight=.$score)}
+rpb3_14_17.cov<-import("../bw/Dme_emb_14-17h_Rpb3_1.bw") %>% {coverage(.,weight=.$score)}
+
+wce_2_4.cov<-import("../bw/Dme_emb_2-4h_WCE_1.bw") %>% {coverage(.,weight=.$score)}
+wce_14_17.cov<-import("../bw/Dme_emb_14-17h_WCE_1.bw") %>% {coverage(.,weight=.$score)}
+
+rpb3_lst<-list(PolII_2_4hrs=list(ip=rpb3_2_4.cov,wce=wce_2_4.cov),PolII_14_17hrs=list(ip=rpb3_14_17.cov,wce=wce_14_17.cov))
+
+
+````
+```{r plot_metagene_opening_genes,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+txs.gr<-flybase_txs_granges()
+late_genes.gr<-txs.gr[txs.gr$fb_tx_id %in% (readRDS("figure1b_enrichments/comparisson_groups.lst.rds")$late.df)$fb_tx_id]
+late_genes.gr   %>% resize(fix="start",width=1) %>% as.data.frame ->late_genes.df
+late_genes.df%<>%metagene_compatible_df
+gene_lst<-list(late_genes=late_genes.df)
+
+gene_lst_names<-names(gene_lst) 
+mclapply(setNames(gene_lst_names,gene_lst_names),build_enrichment_plot,rpb3_lst,gene_lst,mc.cores=4) %>% bind_rows(.id="gene_group") ->rpb3_metagene
+
+mclapply(setNames(gene_lst_names,gene_lst_names),build_read_plot,mnase_lst,gene_lst,mc.cores=4) %>% bind_rows(.id="gene_group") ->mnase_metagene
+
+rpb3_metagene$sample %<>% factor(levels=c("PolII_2_4hrs","PolII_14_17hrs"))
+
+
+mnase_metagene$sample %<>% factor(levels=c("Mnase_2_4hrs","Mnase_14_17hrs","MNase_14_17hrs_mut")) 
+
+
+rpb3_metagene %>% ggplot(aes(x=tss_distance, ymax=smooth,ymin=0,fill=sample)) +
+       geom_ribbon(position="identity",alpha=0.4)+
+       facet_wrap(~sample+gene_group, scales = "free_x") + xlim(-1000,1000)+
+       labs(x     = "Centered At TSS", 
+            y     = "Pol II signal",
+            title = "Pol II changes") + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+
+mnase_metagene %>% ggplot(aes(x=tss_distance, ymax=smooth,ymin=10,fill=sample)) +
+       geom_ribbon(position="identity",alpha=0.4)+
+       facet_wrap(~sample+gene_group, scales = "free_x") + xlim(-1000,1000)+
+       labs(x     = "Centered At TSS", 
+            y     = "MNase signal",
+            title = "MNase changes") + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+
+
+
+
+````
+
+
+```{r plot_metagene_lola_genes,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+txs.gr<-flybase_txs_granges()
+lola_bound_genes.gr<-txs.gr[txs.gr$fb_tx_id %in% readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_promoters]
+lola_bound_genes.gr   %>% resize(fix="start",width=1) %>% as.data.frame ->lola_bound_genes.df
+lola_bound_genes.df%<>%metagene_compatible_df
+gene_lst<-list(lola_bound_genes=lola_bound_genes.df)
+
+gene_lst_names<-names(gene_lst) 
+mclapply(setNames(gene_lst_names,gene_lst_names),build_enrichment_plot,rpb3_lst,gene_lst,mc.cores=4) %>% bind_rows(.id="gene_group") ->rpb3_metagene
+
+mclapply(setNames(gene_lst_names,gene_lst_names),build_read_plot,mnase_lst,gene_lst,mc.cores=4) %>% bind_rows(.id="gene_group") ->mnase_metagene
+
+rpb3_metagene$sample %<>% factor(levels=c("PolII_2_4hrs","PolII_14_17hrs"))
+
+
+mnase_metagene$sample %<>% factor(levels=c("Mnase_2_4hrs","Mnase_14_17hrs","Mnase_14_17hrs_mut")) 
+
+
+rpb3_metagene %>% ggplot(aes(x=tss_distance, ymax=smooth,ymin=0,fill=sample)) +
+       geom_ribbon(position="identity",alpha=0.4)+
+       facet_wrap(~sample+gene_group, scales = "free_x") + xlim(-1000,1000)+
+       labs(x     = "Centered At TSS", 
+            y     = "Pol II signal",
+            title = "Pol II changes") + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+
+mnase_metagene %>% ggplot(aes(x=tss_distance, ymax=smooth,ymin=10,fill=sample)) +
+       geom_ribbon(position="identity",alpha=0.4)+
+       facet_wrap(~sample+gene_group, scales = "free_x") + xlim(-1000,1000)+
+       labs(x     = "Centered At TSS", 
+            y     = "MNase signal",
+            title = "MNase changes") + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+
+mnase_metagene %>% ggplot(aes(x=tss_distance, y=sample,fill=smooth)) +geom_tile(position="identity",alpha=0.4) +scale_fill_gradient(low="white",high="#3D1D10")
+     
+
+````
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

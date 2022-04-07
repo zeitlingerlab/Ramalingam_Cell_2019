@@ -1,0 +1,162 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(rtracklayer)
+library(magrittr)
+library(dplyr)
+library(Gviz)
+library(parallel)
+library(tidyr)
+library(ggplot2)
+library(cowplot)
+cores_to_use=8
+# Output folder for this document
+options(knitr.figure_dir = "figure3c_lola_targets_expression_polII")
+
+source("shared/granges_common.r")
+source("shared/knitr_common.r")
+source("shared/flybase.r")
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe %>% select(-strand,-start,-end,-seqnames)))}
+
+
+```
+
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(Gviz)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(tximport)
+library(DESeq2)
+library(magrittr)
+library(pander)
+library(rhdf5)
+
+# Output folder for this document
+options(knitr.figure_dir = "other_analysis")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/metapeaks.r")
+
+source("shared/promoter_element_enrichments.r")
+panderOptions('knitr.auto.asis', TRUE)
+
+source("shared/flybase.r")
+source("shared/gostats.r")
+
+cores <- function() { return(16) }
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+library(cowplot)
+```
+
+
+```{r define_late_and_housekeeping_genes, message=FALSE}
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+
+
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORC4_14to17h_1","ORC4_14to17h_2","ORC4_14to17h_3","ORC4_14to17h_4","wt_14to17h_1","wt_14to17h_2","wt_14to17h_3")]}
+
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "orc4_14to17h"), c(4,3))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_1+wt_14to17h_2+wt_14to17h_3)/3, orc4_14to17h = (ORC4_14to17h_1+ORC4_14to17h_2+ORC4_14to17h_3)/3) %>% dplyr::select(fb_gene_id,wt_14to17h,orc4_14to17h) ->TPM
+
+rnaseq %<>% merge(TPM)
+
+```
+
+
+```{r}
+
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORE50_ORC4_14to17h_1","ORE50_ORC4_14to17h_2","ORE50_ORC4_14to17h_3","ORE50_ORC4_14to17h_4","wt_14to17h_5","wt_14to17h_6")]}
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "ore50_orc4_14to17h"), c(4,2))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_5+wt_14to17h_6)/2, ore50_orc4_14to17h = (ORE50_ORC4_14to17h_1+ORE50_ORC4_14to17h_2+ORE50_ORC4_14to17h_3+ORE50_ORC4_14to17h_4)/4) %>% dplyr::select(fb_gene_id,wt_14to17h,ore50_orc4_14to17h) ->TPM
+
+rnaseq %>% merge(TPM) -> rnaseq2
+
+
+
+````
+
+
+
+# 
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+``` {r plot_relative_expression, dev=c("png","pdf"),fig.width=12,fig.height=12}
+txs.gr<-flybase_txs_granges()
+lola_bound_genes.gr<-txs.gr[txs.gr$fb_tx_id %in% readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_promoters]
+
+
+read.csv("data/st1_average_cluster_expression.csv") ->expression.df
+expression.df %<>% mutate(fb_symbol = X)
+
+late_genes<-readRDS("data/late_genes_lst.RDS")
+late_genes_groups.df<-readRDS("data/late_wide.df.rds")
+
+expression.df %>% filter(fb_symbol %in% (txs.gr$fb_symbol[txs.gr$fb_gene_id %in% (late_genes$hk_genes)$fb_gene_id] %>% unique)) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> hk_genes.mat 
+
+expression.df %>% filter(fb_symbol %in% (txs.gr$fb_symbol[txs.gr$fb_gene_id %in% (late_genes_groups.df %>% filter(tissue_group4 == '1-2 tissues') %>% `$`(fb_gene_id))] %>% unique)) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> TATA_genes.mat 
+
+
+expression.df %>% filter(fb_symbol %in% lola_bound_genes.gr$fb_symbol) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> lola_targets.mat                                                                                                                                                                                                      
+
+
+lola_targets.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="lola targets") ->lola_targets_exp.df
+
+hk_genes.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="housekeeping genes") ->hk_genes_exp.df
+
+TATA_genes.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="TATA genes") ->TATA_genes_exp.df
+
+
+rbind(lola_targets_exp.df,hk_genes_exp.df,TATA_genes_exp.df) ->temp.df
+
+temp.df$group%<>% factor(levels=c("housekeeping genes","lola targets","TATA genes"))
+
+temp.df %>% ggplot2::ggplot(aes(x=tissue %>% as.integer,y=group,fill=value))+geom_tile(color="black")+scale_fill_gradient(low="white",high="red")+theme_cowplot()
+
+
+
+```
+
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

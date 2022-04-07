@@ -1,0 +1,6 @@
+label,factor,ip,wce
+early_1,polii,Dme_emb_2-4h_Rpb3_1_rpm.bw,Dme_emb_2-4h_WCE_1_rpm.bw
+early_2,polii,Dme_emb_2-4h_Rpb3_2_R2_rpm.bw,Dme_emb_2-4h_WCE_2_R2_rpm.bw
+late_1,polii,Dme_emb_14-17h_Rpb3_1_rpm.bw,Dme_emb_14-17h_WCE_1_rpm.bw
+late_2,polii,Dme_emb_14-17h_Rpb3_2_rpm.bw,Dme_emb_14-17h_WCE_2_rpm.bw
+late_3,polii,Dme_emb_14-17h_Rpb3_3_rpm.bw,Dme_emb_14-17h_WCE_3_rpm.bw

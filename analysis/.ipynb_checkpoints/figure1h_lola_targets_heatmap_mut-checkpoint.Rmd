@@ -1,0 +1,241 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+# Output folder for this document
+options(knitr.figure_dir = "figure1h_lola_targets_heatmap_mut")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+cores_to_use<-8;
+path_to_data_1 <- "../bw"
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+```
+
+# Calculating Lola binding at Late promoters
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+``` {r Lola_promoters, dev=c("png","pdf")}
+comparisson_groups.lst<-readRDS("figure1b_enrichments/comparisson_groups.lst.rds")
+
+groups <- readRDS("figure1e_lola_targets_heatmap/groups.rds")
+
+````
+
+## Samples overview
+
+We will calculate the pol II enrichments for the following samples
+``` {r samples_table}
+samples.df <- read.csv("data/figure1h_lola_targets_heatmap_data.csv", stringsAsFactors=FALSE)
+samples.df %>% pander
+```
+
+## load the samples
+
+``` {r calculate_signal, include=FALSE}
+
+locate_bigwig <- function(name) {
+    path1 <- file.path(path_to_data_1, name)
+    if(file.exists(path1)) return(path1)
+  path2 <- file.path(path_to_data_2, name)
+  if(file.exists(path2)) return(path2)
+  stop("Cannot find bigwig: ", name)
+}
+
+enrichments_for_sample <- function(i, samples.df, txs.gr) {
+  message(i);
+  if (samples.df$normalization[i] == TRUE){
+  sample.bw <- locate_bigwig(samples.df$ip[i])
+  wce.bw    <- locate_bigwig(samples.df$wce[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  normalization <- samples.df$normalization[i]
+  replicate <- samples.df$replicate[i]
+  
+  regions.gr <- promoters(txs.gr, upstream=samples.df$window_upstream[i], downstream=samples.df$window_downstream[i])
+  
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(txs.gr)$region_wce <- regionSums(regions.gr, wce.bw)
+
+  mcols(txs.gr)$ip_total <- total_signal(sample.bw)
+  mcols(txs.gr)$wce_total <- total_signal(wce.bw)
+
+  mcols(txs.gr)$region_wce_min_coverage <- regionMins(regions.gr, wce.bw)
+
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+  mcols(txs.gr)$normalization <- normalization
+  mcols(txs.gr)$replicate <- replicate
+  mcols(txs.gr)$minimum_value <-samples.df$minimum_value[i]
+  mcols(txs.gr)$max_quantile <- samples.df$max_quantile[i]
+  mcols(txs.gr)$color <- samples.df$color[i]
+  message(paste0('processed ',i))
+  txs.gr} else{
+    
+  sample.bw <- locate_bigwig(samples.df$ip[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  normalization <- samples.df$normalization[i]
+  replicate <- samples.df$replicate[i]
+  
+  regions.gr <- promoters(txs.gr, upstream=samples.df$window_upstream[i], downstream=samples.df$window_downstream[i])
+  
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(txs.gr)$region_wce <- NA
+  mcols(txs.gr)$ip_total <- total_signal(sample.bw)
+  mcols(txs.gr)$wce_total <- NA
+  mcols(txs.gr)$region_wce_min_coverage <- NA
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+  mcols(txs.gr)$normalization <- normalization
+  mcols(txs.gr)$replicate <- replicate
+  mcols(txs.gr)$minimum_value <-samples.df$minimum_value[i]
+  mcols(txs.gr)$max_quantile <- samples.df$max_quantile[i]
+  mcols(txs.gr)$color <- samples.df$color[i]
+  message(paste0('processed ',i))
+  txs.gr
+    
+  }
+  
+  
+}
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs
+
+  data.df <- 1:nrow(samples.df) %>%
+                 mclapply(enrichments_for_sample, samples.df, txs.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+
+
+
+```
+
+## Calculate enrichments
+
+Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.
+
+``` {r calculate_enrichments, include=FALSE}
+
+enrichments.df <- data.df %>% filter(!is.na(region_wce))
+enrichments.df <- enrichments.df %>% 
+                      group_by(label, factor) %>%
+                      mutate(median_region_wce = median(region_wce), calculation = 'enrichment')
+
+enrichments.df %<>% transform(enrichment = (region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total))
+
+tss.infs <- which(is.infinite(enrichments.df$enrichment))
+
+min.tss <- with(enrichments.df, min(enrichment[is.finite(enrichment)]))
+
+if(length(tss.infs) > 0) enrichments.df$enrichment[tss.infs] <- min.tss
+
+
+signals.df <- data.df %>% filter(is.na(region_wce))
+signals.df <- signals.df %>% mutate(calculation = 'signal')
+
+signals.df %<>% transform(enrichment = (region_ip / ip_total) )
+
+
+enrichments.df<- rbind(enrichments.df %>% dplyr::select(-median_region_wce),signals.df)
+
+enrichments.df %<>% group_by(fb_tx_id,factor,label) %>% summarize(fb_gene_id = fb_gene_id[1], fb_symbol = fb_symbol[1], calculation = calculation[1], enrichment = mean(enrichment), minimum_value = minimum_value[1], max_quantile = max_quantile[1],color=color[1]) 
+```
+
+## Save results
+
+``` {r save_results, include=FALSE}
+enrichments.df %<>%
+  ungroup %>%
+  dplyr::select(fb_tx_id, fb_gene_id, fb_symbol, enrichment,calculation,minimum_value,max_quantile, factor, label,color)
+  
+#filter for highest tx_id
+#enrichments.df %<>% filter(fb_tx_id %in% (enrichments.df %>% group_by(fb_gene_id) %>% summarize(fb_tx_id = fb_tx_id[which.max(enrichment)]) %>% `$`(fb_tx_id)))
+
+enrichments.df %>% saveRDS(file=figure_path("enrichments.df.rds"))
+
+```
+
+```{r enrichments}
+
+enrichments.df %<>% group_by(factor,label) %>% mutate(enrichment = ifelse(enrichment<minimum_value,0,enrichment)) 
+
+enrichments.df %<>% filter(fb_tx_id %in% (comparisson_groups.lst$all_promoters.df)$fb_tx_id ) 
+
+enrichments.df %<>% group_by(label, factor) %>%
+            dplyr::mutate(normalized_enrichment = pmax(0, pmin(1, enrichment / quantile(enrichment, max_quantile))))
+
+		
+# pol.df %<>% filter(label %in% c("early","late"))
+
+saveRDS(enrichments.df, file=figure_path("normalized_enrichments.df.rds"))
+````
+
+```{r heatmap, dev=c("png","pdf"),fig.width=14, fig.height=10}
+
+
+build_heatmap_plot <- function(i,groups,enrichments.df) {
+  
+  enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
+			select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment)   -> values.df
+  
+  heatmap.df <- groups %>%
+                lapply(function(tx_ids) {
+                  subset(values.df, fb_tx_id %in% tx_ids)
+                }) %>%
+                bind_rows(.id="group_name") %>% gather(time,enrichment,-group_name,-fb_tx_id,-factor,-color) 
+
+  heatmap.df$group_name%<>%factor(levels=c("lola_promoters","control"))
+  heatmap.df$time %<>% factor(levels=c("wt","mut","rescue"))
+  heatmap.df$fb_tx_id%<>% factor(levels=(heatmap.df$fb_tx_id[order(as.character(heatmap.df$fb_tx_id))] %>% unique))
+  heatmap.df%<>% {.[order(.$fb_tx_id),]} ->heatmap.df
+  
+  g <- ggplot(heatmap.df, aes(x=time, y=fb_tx_id, fill=enrichment)) +
+       geom_tile() +
+       scale_fill_gradient(heatmap.df$factor[1], high=heatmap.df$color[1] %>% as.character %>% gsub('\"',"",.,fixed=T), low="white") +
+       facet_grid(group_name ~ ., scales="free_y", space="free_y") +
+       theme_bw() +
+       labs(x="", y="") +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+  
+  g
+  heatmap.df
+}
+
+groups <- readRDS("figure1e_lola_targets_heatmap/groups.rds")
+
+heatmap_all   <- enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,enrichments.df)
+
+
+heatmap_all[[1]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[1]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+
+heatmap_all[[2]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[2]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+
+```
+````{r rna_changes}
+
+```
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

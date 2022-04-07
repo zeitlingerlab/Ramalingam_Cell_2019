@@ -1,0 +1,155 @@
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+options(knitr.figure_dir = "rpb3_wt_Vsrpb3_mut")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+source("shared/tf_motif_enrichments.r")
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+````
+
+```{r libraries, include=FALSE} 
+library(GenomicRanges)
+library(plyr)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(DESeq2)
+library(tidyr)
+library(Biostrings)
+library(GenomicRanges)
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+
+cores_to_use<-10;
+
+source("shared/peaks_genes.r")
+
+signal_for_sample <- function(i, samples.df, txs.gr,upstream,downstream) {
+  ranges_path<-samples.df$ip[i]
+  
+  ranges<-get(load(ranges_path))
+  label <- samples.df$label[i]
+  upstream <- samples.df$window_upstream[i]
+  downstream <- samples.df$window_downstream[i]
+  condition<- samples.df$condition[i]
+  time<- samples.df$time[i]
+  
+  regions.gr<-c(txs.gr%>%{.[strand(.)=="+"]} %>% {start(.)<-(start(.)+upstream);end(.)<-(start(.)-upstream+downstream);.},
+         txs.gr%>%{.[strand(.)=="-"]} %>% {start(.)<-(end(.)+upstream);end(.)<-(start(.)-upstream+downstream);.})
+  
+  regions.gr %<>% {.[order(.$fb_tx_id)]}
+  txs.gr %<>% {.[order(.$fb_tx_id)]}
+  
+  mcols(txs.gr)$signal <- countOverlaps(regions.gr,ranges,ignore.strand=TRUE)
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$condition <- condition
+  mcols(txs.gr)$time <- time
+  
+  txs.gr
+}
+
+
+````
+```{r differential_peaks_DESeq,include=FALSE}
+
+flybase_txs_granges() %>% filter_chrs-> promoter.gr
+
+samples.df<-read.table("data/polII_data_mut_ranges.csv",header=TRUE,sep=",")
+samples.df$ip %<>% as.character
+
+pol_data.df <- 1:nrow(samples.df) %>%
+                 mclapply(signal_for_sample, samples.df, promoter.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+pol_data.df %<>% select(-condition) %>% spread(label,signal)
+
+pol_data.df %<>%  
+ group_by(fb_gene_id) %>% 
+ summarise(fb_tx_id  = fb_tx_id[which.max(rowMeans(cbind(wt_late_1,wt_late_2,wt_late_3)))]) %>%
+ `$`(fb_tx_id) %>% { subset(pol_data.df, subset = fb_tx_id %in% .) }
+	 
+ read.m<-pol_data.df %>% `[`(11:16) %>% as.matrix
+ 
+ rownames(read.m)<-pol_data.df$fb_tx_id
+
+ design.dfs<-data.frame(row.names=colnames(read.m), condition=c(rep("mut",3),rep("wt","3")))
+ 
+ 
+ dds <- DESeqDataSetFromMatrix(countData=read.m, colData=design.dfs, design = ~ condition)
+ dds <- DESeq(dds)
+
+ nrow(subset(results(dds),padj<0.01))
+
+   
+counts_n.dfs<-   counts(dds,normalized=TRUE)
+counts_mean.dfs<- transform(counts_n.dfs,rpb3_mut=(mut_late_1+mut_late_2+mut_late_3)/3,rpb3_wt=(wt_late_1+wt_late_2+wt_late_3)/3)
+   
+	counts_mean.dfs$padj<-results(dds)$padj
+	counts_mean.dfs$change<-'nochange'
+	counts_mean.dfs$change[counts_mean.dfs$padj<0.01 & counts_mean.dfs$rpb3_wt>counts_mean.dfs$rpb3_mut]<-'down'
+	counts_mean.dfs$change[counts_mean.dfs$padj<0.01 & counts_mean.dfs$rpb3_wt<counts_mean.dfs$rpb3_mut]<-'up'
+
+ pol_data.df$change<-counts_mean.dfs$change
+ pol_data.df$rpb3_wt<-counts_mean.dfs$rpb3_wt
+ pol_data.df$rpb3_mut<-counts_mean.dfs$rpb3_mut
+ saveRDS(pol_data.df, file=figure_path("pol_data.df.rds"))
+ 
+````
+```{r dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+	
+	 ggplot(counts_mean.dfs,aes(log2(rpb3_wt),log2(rpb3_mut),color=change))+geom_point()+theme_bw()
+
+````
+Look at motif enrichment
+```{r motif_enrichment}
+pol_data.df  %>%  GRangesFromDataFrames() %>% resize(fix="start",width=1) %>% resize(fix="end",width=500) -> promoter.gr
+
+
+seqlevels(promoter.gr)<-c("chr2L","chr2R","chr3L","chr3R","chr4","chrX")
+seqlengths(promoter.gr)<-seqlengths(Dmelanogaster)[names(seqlengths(Dmelanogaster)) %in% seqlevels(promoter.gr)]
+
+promoter.gr %<>% trim
+promoter.gr %>% {.[.$change=="down"]} -> down.gr
+
+promoter.gr %>% {.[.$change=="up"]} -> up.gr
+
+promoter.gr %>% {.[.$change=="nochange"]} -> nochange.gr
+
+
+fimo.gr <- updateObject(readRDS("/n/projects/jjj/motifs/matches.granges.rds"))
+
+
+down_nochange.df<-significant_motifs(down.gr,nochange.gr,fimo.gr,cutoff=0.01)
+down_nochange.df
+
+up_nochange.df<-significant_motifs(up.gr,nochange.gr,fimo.gr,cutoff=0.01)
+up_nochange.df
+
+````
+denovo_motif
+```{r denovo_motif}
+pol_data.df  %>%  GRangesFromDataFrames() %>% resize(fix="start",width=1) %>% resize(fix="end",width=200) -> promoter.gr
+
+
+seqlevels(promoter.gr)<-c("chr2L","chr2R","chr3L","chr3R","chr4","chrX")
+seqlengths(promoter.gr)<-seqlengths(Dmelanogaster)[names(seqlengths(Dmelanogaster)) %in% seqlevels(promoter.gr)]
+
+promoter.gr %<>% trim
+promoter.gr %>% {.[.$change=="down"]} -> down.gr
+
+peaks.seq <- getSeq(Dmelanogaster, down.gr)
+names(peaks.seq) <- paste0("peak_", 1:length(peaks.seq))
+writeXStringSet(peaks.seq, filepath=figure_path("macs_peaks_down_gr.fasta"))
+
+# meme macs_peaks_down_gr.fasta -oc macs_peaks_down_gr_meme_output -p 24 -mod zoops -dna -nmotifs 10 -revcomp -maxw 12 -maxsize 5000000
+````
+
+
+``` {r session_info, echo=FALSE, comment=NA}
+sessionInfo()
+````

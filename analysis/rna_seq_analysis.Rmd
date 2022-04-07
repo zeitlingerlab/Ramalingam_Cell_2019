@@ -1,0 +1,138 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Aim: motifs under differently expressed genes in the lola_mutant
+
+This document was generated on `r format(Sys.time(), "%a %b %d %Y, %I:%M %p")`.
+
+Author: [Vivek](mailto:vir@stowers.org)
+
+
+```{r library}
+library(GenomicRanges)
+library(ggplot2)
+library(plyr)
+library(fields)
+library(rtracklayer)
+library(Biostrings)
+library(reshape2)
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+library(doMC)
+registerDoMC(cores=10)
+options(knitr.figure_dir = "rnaseq_analysis")
+````
+```{r source}
+get_load <- function(filename) {
+    # message('Loading ', filename, ' ... ', appendLF=FALSE)
+    o <- updateObject(get(load(filename)))
+    # message('OK')
+    o
+}
+source("/n/projects/vir/shared/peaks_genes.r")
+lola_14_peaks_path<-"/n/projects/vir/lola/14-17/lola_pi_peaks_peaks.bed"
+
+````
+```{r samples}
+diff_exp<-read.csv("/n/projects/vir/lola/14-17/rna_seq/cuffdiff/gene_exp.diff",sep='\t')
+FPKM_all<-read.csv("/n/projects/vir/lola/14-17/rna_seq/cuffdiff/genes.fpkm_tracking",sep='\t')
+````
+
+```{r processing and grouping}
+valid.chrs <- c("chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrX")
+fb_txs <- get_load("/n/projects/vir/gaffactor/flybase/fb.transcripts.r5.47.RData")
+fb_txs <- subset(fb_txs, chr %in% valid.chrs)
+promoter.gr <- with(fb_txs, GRanges(ranges     = IRanges(start=start, end=end), 
+                               seqnames   = chr,
+                               strand     = ifelse(strand == 1, "+", "-"),
+                               fb_gene_id = fb_gene_id,
+                               fb_tx_id   = fb_tx_id))
+promoter.gr
+
+promoter.gr <- resize(promoter.gr, width=1, fix="start")
+promoter.gr <- resize(promoter.gr, width=500, fix="end")
+
+lola_pi_peaks.gr<-peaks_genes(lola_14_peaks_path)
+
+lola_g_match<-vmatchPattern(pattern="AAAGCT",subject=Dmelanogaster,max.mismatch=0)
+gaga_g_match<-vmatchPattern(pattern="GAGAG",subject=Dmelanogaster,max.mismatch=0)
+
+mcols(lola_pi_peaks.gr)$lola_motif<-'absent'
+mcols(lola_pi_peaks.gr)$lola_motif[as.data.frame(findOverlaps(lola_g_match,lola_pi_peaks.gr))$subjectHits]<-'present'
+mcols(lola_pi_peaks.gr)$lola_motif_no<- countOverlaps(lola_pi_peaks.gr,lola_g_match)
+
+
+mcols(lola_pi_peaks.gr)$gaga_motif<-'absent'
+mcols(lola_pi_peaks.gr)$gaga_motif[as.data.frame(findOverlaps(gaga_g_match,lola_pi_peaks.gr))$subjectHits]<-'present'
+mcols(lola_pi_peaks.gr)$gaga_motif_no<- countOverlaps(lola_pi_peaks.gr,gaga_g_match)
+
+
+mcols(lola_pi_peaks.gr)$lola_binding<-'distal'
+mcols(lola_pi_peaks.gr)$lola_binding[as.data.frame(findOverlaps(promoter.gr,lola_pi_peaks.gr))$subjectHits]<-'promoter'
+
+
+lola_peaks_14_17.dfs<-as.data.frame(lola_pi_peaks.gr)
+lola_peaks_14_17.dfs_v<-lola_peaks_14_17.dfs[lola_peaks_14_17.dfs$seqnames %in% valid.chrs,]
+
+
+
+top.lola_pi_peaks <- head(lola_peaks_14_17.dfs_v[order(lola_peaks_14_17.dfs_v$score, decreasing=TRUE), ],1000)
+
+expressed_genes<-FPKM_all[FPKM_all$wildtype_FPKM>5,]
+
+
+
+#counting differentially expressed genes in universe and in lola targets
+sum(diff_exp$gene_id[diff_exp$significant=="yes"] %in% top.lola_pi_peaks$nearest_gene_id)
+length(unique(top.lola_pi_peaks$nearest_gene_id))
+sum(diff_exp$gene_id[diff_exp$significant=="yes"] %in% expressed_genes$gene_id)
+length(unique(expressed_genes$gene_id))
+
+sum(diff_exp$gene_id[diff_exp$significant=="yes"] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='distal'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes"] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='promoter'])
+sum(top.lola_pi_peaks$lola_binding=='distal')
+sum(top.lola_pi_peaks$lola_binding=='promoter')
+
+#counting downregulated genes in universe and in lola targets
+
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='promoter'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% expressed_genes$gene_id)
+
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='distal'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='promoter'])
+
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='promoter' & top.lola_pi_peaks$lola_motif=='present'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='promoter' & top.lola_pi_peaks$lola_motif=='absent'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='distal' & top.lola_pi_peaks$lola_motif=='present'])
+sum(diff_exp$gene_id[diff_exp$significant=="yes" & diff_exp$log2.fold_change.<0] %in% top.lola_pi_peaks$nearest_gene_id[top.lola_pi_peaks$lola_binding=='distal' & top.lola_pi_peaks$lola_motif=='absent'])
+
+sum(top.lola_pi_peaks$lola_binding=='distal' & top.lola_pi_peaks$lola_motif=='present')
+sum(top.lola_pi_peaks$lola_binding=='distal' & top.lola_pi_peaks$lola_motif=='absent')
+sum(top.lola_pi_peaks$lola_binding=='promoter' & top.lola_pi_peaks$lola_motif=='present')
+sum(top.lola_pi_peaks$lola_binding=='promoter' & top.lola_pi_peaks$lola_motif=='absent')
+
+sig_change<-diff_exp[diff_exp$significant=="yes",]
+sig_change$class<-'others'
+sig_change$class[sig_change$gene_id %in% expressed_genes$gene_id]<-'other_expressed_genes'
+sig_change$class[sig_change$gene_id %in% top.lola_pi_peaks$nearest_gene_id]<-'lola_targets'
+
+````
+
+
+``` {r fold_change_lola_targets,dev=c('png','pdf'), fig.cap="all_samples_correlation", fig.width=18, fig.height=16}
+
+ggplot(sig_change,aes(class,log2.fold_change.))+geom_boxplot(aes(fill=class))+theme_bw()
+````
+``` {r fold_change_lola_targets2,dev=c('png','pdf'), fig.cap="all_samples_correlation", fig.width=18, fig.height=16}
+
+ggplot(sig_change,aes(class,log2.fold_change.))+geom_boxplot()+theme_bw()
+````
+## Session information
+
+For reproducibility, this analysis was performed with the following R/Bioconductor session:
+
+``` {r session_info, echo=FALSE}
+sessionInfo()
+````
+

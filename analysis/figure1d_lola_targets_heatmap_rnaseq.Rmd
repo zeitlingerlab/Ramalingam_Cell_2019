@@ -1,0 +1,86 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+# Output folder for this document
+options(knitr.figure_dir = "figure1d_bound_genes_expression")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+cores_to_use<-6;
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+get_FPKM<-function(selection,files){
+FPKM<-files %>% filter(condition==selection) %>% `$`(file) %>% as.character %>% read.csv(sep='\t')
+FPKM %<>% select(fb_tx_id=tracking_id,FPKM)
+names(FPKM)<-c("fb_tx_id",paste0('fpkm_',selection %>% as.character))
+FPKM
+}
+
+````
+
+#Expression profile of lola_targtes
+
+```{r files}
+
+
+files<-read.csv("data/rnaseq_timepoint_factors.csv");
+
+files$condition %>% mclapply(get_FPKM,files,mc.cores=6) %>% do.call(merge,.) -> FPKM.df
+
+````
+
+```{r calculate_enrichment}
+lola_bound_genes<-readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_targets
+control_genes<-readRDS("figure1e_lola_targets_heatmap/groups.rds")$control
+
+FPKM.df$class<-'others'
+FPKM.df$class[FPKM.df$fb_tx_id %in% lola_bound_genes]<-'Lola_targets'
+FPKM.df$class[FPKM.df$fb_tx_id %in% control_genes]<-'control'
+
+FPKM.df %<>% gather(time,fpkm,-fb_tx_id,-class)
+FPKM.df$fpkm[FPKM.df$fpkm<2]<-1
+nonnormalised_FPKM.df<- FPKM.df
+nonnormalised_FPKM.df$time %<>% factor(levels=c("fpkm_4_6h","fpkm_14_16h"))
+
+FPKM.df %<>% group_by(time) %>% mutate(normalized_fpkm=pmax(0, pmin(1, fpkm/ quantile(fpkm, 0.95))))
+FPKM.df$time %<>% factor(levels=c("fpkm_4_6h","fpkm_14_16h"))
+````
+
+
+```{r plot_exp_boxplot,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+ggplot(nonnormalised_FPKM.df, aes(x=time, y=log2(fpkm))) + facet_wrap(~class,scales = "free")+
+       geom_boxplot() +
+       labs( title = "Expression profile of Lola bound genes") +theme_bw()+
+         theme(text = element_text(size=15),axis.text.x=element_text(angle=0),panel.grid.major = element_blank(),
+           panel.grid.minor = element_blank(),strip.background = element_blank(),
+          panel.border = element_rect(colour = "black"),
+          panel.background = element_blank())
+
+FPKM.df %<>% filter(class %in% c("Lola_targets","control"))
+heatmap_order.df<-(readRDS("figure2a_heatmap/heatmap_all.lst.rds"))$data
+
+FPKM.df$fb_tx_id %<>% factor(levels=(heatmap_order.df$fb_tx_id[order(as.character(heatmap_order.df$fb_tx_id))] %>% unique))
+
+ggplot(FPKM.df, aes(x=time, y=fb_tx_id, fill=log2(fpkm))) + facet_wrap(~class,scales = "free")+
+       geom_tile() +
+       labs( title = "Expression profile of Lola bound genes") +
+         scale_fill_gradient2("fpkm", high="#592e4c", low="white",mid="white",midpoint=1) +
+       theme_bw() +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+
+````
+
+``` {r session_info, echo=FALSE}
+sessionInfo()
+````		

@@ -1,0 +1,150 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(ggplot2)
+library(plyr)
+library(doMC)
+library(dplyr)
+library(magrittr)
+library(Hmisc)
+registerDoMC(cores=10)
+
+# Output folder for this document
+options(knitr.figure_dir = "figure4_mnase_metagene_at_lola_motif")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("shared/knitr_common.r")
+source("shared/metagene_common.r")
+source("shared/flybase.r")
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+build_read_plot<-function(region_group,mnase_lst,region_lst){
+  mnase_lst %>% lapply(get_metagene_reads,region_lst[[region_group]],before_tss=500, after_tss=500, smooth=41,
+                                        normalization_target=20000000*150) %>% bind_rows(.id="sample")
+}
+
+
+make_plot_for_each_group<-function(group,lola_peaks.gr){
+lola_peaks.gr%<>%{.[.$group==group]}
+
+lola_peaks.df<-metagene_compatible_df(lola_peaks.gr) 
+region_lst<-list(lola_binding_site=lola_peaks.df)
+region_lst_names<-names(region_lst) 
+
+mclapply(setNames(region_lst_names,region_lst_names),build_read_plot,mnase_lst,region_lst,mc.cores=4) %>% bind_rows(.id="region_group") ->mnase_metagene
+
+mnase_metagene %>% ggplot(aes(x=tss_distance, ymax=smooth,ymin=10,fill=sample)) +
+       geom_ribbon(position="identity",alpha=0.4) + xlim(-500,500)+
+       labs(x     = "Centered At Lola peak", 
+            y     = "Mnase signal",
+            title = paste0("Nucleosome Occupancy changes ",group)) + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+}
+
+get_lola_peaks<-function(location="promoter",number=1000){
+
+import("/n/projects/vir/lola/14-17/lola_pi_peaks_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("/n/projects/vir/lola/14-17/lola_pi_14_17_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode='coarse')
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=1) %>% resize(fix='end',width=500) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location==location]
+lola_peaks.gr
+}
+
+metagene_compatible_df<-function(region.gr){
+  
+region.gr %>% as.data.frame ->region.df
+region.df$strand<-ifelse(region.df$strand=='+',1,-1)
+region.df$chr<-region.df$seqnames
+region.df  
+}
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+load_data<-function(i,files){
+  temp<-files %>% filter(id==i)
+  if(temp$type=="bw"){
+    data<-import((temp$sample %>% as.character)) %>% coverage(.,weight=.$score)
+    }
+  else{
+    data<-get(load((temp$sample %>% as.character)))
+  }
+  data
+}
+
+combine_data<-function(groups,data_list){
+  groups %>% lapply(function(ids){data_list[names(data_list) %in% ids] %>% Reduce('+',.) %>% `/`(.,length((data_list[names(data_list) %in% ids])))})
+}
+```
+
+
+Look at the mnase profile at Lola target genes in Wt and Mut
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+```{r files}
+#plan(remote, workers="hickory")
+
+#mnase_mut.fft%<-%(get(load("/n/projects/jjj/rdata/promoter_opening/mnase_28267_14to17h_2.cov.RData")) %>% filterFFT(pcKeepComp = 0.02,mc.cores=24))
+#mnase_mut.fft  %>% lapply(Rle) %>% RleList ->mnase_mut.cov
+
+#mnase_wt.fft%<-%(get(load("/n/projects/jjj/rdata/promoter_opening/mnase_wt_14to17h_2.cov.RData")) %>% filterFFT(pcKeepComp = 0.02,mc.cores=24))
+#mnase_wt.fft  %>% lapply(Rle) %>% RleList ->mnase_wt.cov
+
+#mnase_lst<-list(mnase_mut=mnase_mut.cov,mnase_wt=mnase_wt.cov)
+files<-read.csv("data/mnase_data.csv")
+files %<>% mutate(id=paste0(rep,'_',factor,'_',condition))
+files  %<>% group_by(factor,condition) %>% mutate(split_name=paste0(factor,'_',condition))
+data_list <- mclapply(setNames(files$id,files$id),load_data,files,mc.cores=6)
+
+combined_data_lst <- files$id  %>% split(files$split_name) %>% combine_data(data_list)
+
+mnase_lst<-list(mnase_wt=combined_data_lst$mnase_wt,mnase_mut=combined_data_lst$mnase_mut)
+````
+
+
+```{r plot_reads_metagene_fw,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+lola_peaks_promoter.gr<-get_lola_peaks("promoter",750) %>% resize(fix='center',width=500) %>% filter_for_motif(motif="AAAGCT")  %>% resize(fix='center',width=1)
+lola_peaks_distal.gr<-get_lola_peaks("distal",750) %>% resize(fix='center',width=500) %>% filter_for_motif(motif="AAAGCT")  %>% resize(fix='center',width=1)
+
+lola_peaks_promoter.df<-metagene_compatible_df(lola_peaks_promoter.gr)
+lola_peaks_distal.df<-metagene_compatible_df(lola_peaks_distal.gr)
+
+region_lst<-list(lola_binding_promoter=lola_peaks_promoter.df,lola_binding_distal=lola_peaks_distal.df)
+region_lst_names<-names(region_lst) 
+
+mclapply(setNames(region_lst_names,region_lst_names),build_read_plot,mnase_lst,region_lst,mc.cores=4) %>% bind_rows(.id="region_group") ->mnase_metagene
+
+mnase_metagene %>% ggplot(aes(x=tss_distance, y=smooth,color=sample)) +
+       geom_line(position="identity") + xlim(-500,500)+
+  facet_wrap(~region_group,scale="free_y")+
+       labs(x     = "Centered At Lola peak", 
+            y     = "Mnase signal",
+            title = paste0("Nucleosome Occupancy changes ")) + 
+        theme(text=element_text(size=25))+theme_bw()+theme(
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank())
+
+
+````
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

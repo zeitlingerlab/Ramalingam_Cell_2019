@@ -1,0 +1,65 @@
+# motif enrichements at different gene groups
+
+###Comments: I am using one transcript per gene.
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+options(knitr.figure_dir = "figure1b_motif_enrichment_different_groups")
+library(GenomicRanges)
+library(plyr)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(DESeq2)
+library(doMC)
+library(dplyr)
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+source("shared/tf_motif_enrichments.r")
+
+#pcutoff=0.01
+````
+
+```{r libraries, include=FALSE} 
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+````
+```{r load_gene_groups_and_further_sub_group}
+
+
+comparisson_groups.lst <-readRDS("figure1b_enrichments/comparisson_groups.lst.rds")
+
+
+txs.gr<-flybase_txs_granges()
+
+late.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$late.df)$fb_tx_id] %>% resize(fix="start",width=100) %>% resize(fix="end",width=300)
+
+nochange.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$nochange.df)$fb_tx_id] %>% resize(fix="start",width=100) %>% resize(fix="end",width=300)
+
+
+````
+
+
+ ``` {r load_fimo, include=FALSE}
+fimo.gr <- updateObject(readRDS("../external_data/fimo/dm6.matches.granges.rds"))
+````
+
+
+```{r motif_enrichments}
+
+late_nochange.df<-significant_motifs(late.gr,nochange.gr,fimo.gr,cutoff=0.01)
+late_nochange.df
+
+
+```
+
+
+``` {r session_info, echo=FALSE, comment=NA}
+sessionInfo()
+```

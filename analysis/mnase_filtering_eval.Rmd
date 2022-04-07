@@ -1,0 +1,75 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+
+# Output folder for this document
+options(knitr.figure_dir = "mnase_filtering_eval")
+
+source("shared/knitr_common.r")
+knitr::opts_chunk$set(echo=TRUE, eval=TRUE)
+```
+
+
+``` {r libraries}
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(parallel)
+library(GenomicAlignments)
+library(rtracklayer)
+library(ggplot2)
+library(cowplot)
+cores_to_use<-10;
+path_to_files<-"/lola_paper/aws/bam/mnase/"
+min_frag_size<-100;
+max_frag_size<-200;
+
+```
+
+``` {r plots,dev=c("png","pdf"),fig.width=14, fig.height=10}
+
+
+get_width <- function(file_name){
+  readGAlignmentPairs(file_name) %>%
+    granges %>%
+ width(.) -> granges_width
+  name = strsplit(file_name,"/")[[1]]
+  data.frame(width=granges_width,group=name[length(name)])
+}
+
+get_filtered_width <- function(file_name,min_frag_size,max_frag_size){
+  readGAlignmentPairs(file_name) %>%
+    granges %>%
+  {`[`(.,(width(.)>min_frag_size) & (width(.)<max_frag_size))} %>% 
+    width(.) -> granges_width
+  name = strsplit(file_name,"/")[[1]]
+  data.frame(width=granges_width,group=name[length(name)])
+}
+
+files.list<-list.files("/lola_paper/aws/bam/mnase/",pattern = '*.bam',full.names=TRUE)
+
+
+files.list %<>% c(.,list.files("/lola_paper/aws/bam/mnase/newsamples",pattern = '*.bam',full.names=TRUE))
+
+files.list
+
+plot_df <- mclapply(files.list, get_width,mc.cores=cores_to_use) %>% do.call(rbind,.)
+plot_df %>% ggplot(aes(x=width))+
+            geom_histogram()+
+            facet_wrap(~group,scales="free_x")+
+            theme_cowplot()+
+            scale_x_continuous(breaks=c(0,50,100,150,200,250,300,350,400,450,500),limits=c(0,500))+
+            theme(strip.text = element_text(size = 12))
+
+plot_df <- mclapply(files.list, get_filtered_width,min_frag_size,max_frag_size,mc.cores=cores_to_use) %>% do.call(rbind,.) 
+
+plot_df %>% ggplot(aes(x=width))+geom_histogram()+facet_wrap(~group)+theme_cowplot()+scale_x_continuous(breaks=c(0,50,100,150,200,250,300,350,400,450,500),limits=c(0,500))
+
+plot_df %>% ggplot(aes(x=width))+
+            geom_histogram()+
+            facet_wrap(~group,scales="free_x")+
+            theme_cowplot()+
+            scale_x_continuous(breaks=c(0,50,100,150,200,250,300,350,400,450,500),limits=c(0,500))+
+            theme(strip.text = element_text(size = 12))
+````
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

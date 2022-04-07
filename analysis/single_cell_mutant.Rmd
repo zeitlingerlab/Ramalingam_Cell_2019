@@ -1,0 +1,198 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+
+library(Seurat)
+library(cowplot)
+library(tidyr)
+library(dplyr)
+library(magrittr)
+library(RColorBrewer)
+library(pheatmap)
+
+# Output folder for this document
+options(knitr.figure_dir = "single_cell_mutant")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+
+# read_cuffdiff <- function(filename) {
+#   cuffdiff <- read.csv(filename,sep="\t")
+#   
+#   cuffdiff <- cuffdiff[, c("gene_id", "sample_1", "sample_2", "status", "value_1", "value_2", "log2.fold_change.", "q_value", "significant")]
+#   names(cuffdiff) <- c("fb_gene_id", "sample_1", "sample_2", "status", "RPKM_1", "RPKM_2", "fold_change", "q_value", "significant")
+# 
+#   cuffdiff <- transform(cuffdiff, direction = ifelse(fold_change < 0, "down", "up"))
+#   cuffdiff <- transform(cuffdiff, significant = ifelse(significant == "yes", TRUE, FALSE))
+#  
+# }
+```
+
+Look at changes in gene expression of lola target genes in the single cell data
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+
+```{r plot, fig.width=14, fig.height=10}
+
+embryos<-readRDS("single_cell/embryo_single_cell.RData")
+
+t(embryos@data) %>% as.matrix %>%  as.data.frame() -> data.df
+
+lola_bound_genes.df<-flybase_txs() %>% as.data.frame() %>% filter(fb_tx_id %in% readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_promoters)
+
+control_genes.df<-flybase_txs() %>% as.data.frame() %>% filter(fb_tx_id %in% readRDS("figure1e_lola_targets_heatmap/groups.rds")$control)
+
+
+data_lola.df <- data.df[,(colnames(data.df) %in% lola_bound_genes.df$fb_symbol)]
+
+data_lola.df$cell<-rownames(data.df)
+
+data_lola.df$condition<-sub("_.*", "", data_lola.df$cell)
+
+data_lola.df$cell<-sub(".*_", "", data_lola.df$cell)
+
+
+
+data_lola.df %<>%  mutate( group = embryos@meta.data$res.0.8)
+
+
+
+data_lola.df %>% gather(gene,expression,-cell,-condition,-group) -> data_lola.df_long
+
+data_lola.df_long %>% group_by(group,condition,gene) %>% dplyr::mutate(total = length(cell),median_ng_expression=median(expression[expression>0]) %>% is.na %>% ifelse(0,median(expression[expression>0])),ng_freq=sum(expression>0)/length(expression),max_exp = max(expression)) ->exp_data_lola.df
+
+
+exp_data_lola.df %<>% dplyr::group_by(gene,condition) %>% dplyr::mutate(exp_group = group[which(expression==max(expression))[1]],expression_in_ht = median_ng_expression[which(group==exp_group)[1]] , expression_in_ot=weighted.mean(median_ng_expression[which(group!=exp_group & median_ng_expression>0)],total[which(group!=exp_group & median_ng_expression>0)]),ng_freq_in_ht = ng_freq[which(group==exp_group)[1]] , ng_freq_in_ot=weighted.mean(ng_freq[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])],total[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])]))
+
+
+exp_data_lola.df %<>%  dplyr::group_by(condition,gene) %>% dplyr::summarize(expression.in.ht=expression_in_ht[1] ,expression.in.ot=expression_in_ot[1],ng.freq.in.ht= ng_freq_in_ht[1] ,ng.freq.in.ot=ng_freq_in_ot[1])  %>% unite(expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot,expression.in.ht,expression.in.ot,ng.freq.in.ht,ng.freq.in.ot) %>% spread(condition,expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot)
+
+
+exp_data_lola.df %>% separate(mut,sep="_",c("mut_expression.in.ht","mut_expression.in.ot","mut_ng.freq.in.ht","mut_ng.freq.in.ot")) %>% separate(wt,sep="_",c("wt_expression.in.ht","wt_expression.in.ot","wt_ng.freq.in.ht","wt_ng.freq.in.ot")) -> wide.df
+
+wide.df[-1] %<>% mutate_if(is.character,as.numeric)
+
+wide.df %<>% dplyr::select(gene,wt_expression.in.ht,mut_expression.in.ht,wt_expression.in.ot,mut_expression.in.ot,wt_ng.freq.in.ht,mut_ng.freq.in.ht,wt_ng.freq.in.ot,mut_ng.freq.in.ot)
+wide.df[!(rowSums(is.na(wide.df))>0),] -> wide_m.df
+wide_m.df %<>% dplyr:: mutate(exp_diff_ht=wt_expression.in.ht-mut_expression.in.ht,exp_diff_ot=wt_expression.in.ot-mut_expression.in.ot,freq_diff_ht=wt_ng.freq.in.ht-mut_ng.freq.in.ht,freq_diff_ot=wt_ng.freq.in.ot-mut_ng.freq.in.ot)
+
+
+# wide_m.df[6:9] %>% as.matrix() %>% pheatmap(cluster_cols = FALSE)
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_ng.freq.in.ht","mut_ng.freq.in.ht","wt_ng.freq.in.ot","mut_ng.freq.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+
+
+```
+
+```{r control_genes}
+data_control.df <- data.df[,colnames(data.df) %in% control_genes.df$fb_symbol]
+
+data_control.df$cell<-rownames(data.df)
+
+data_control.df$condition<-sub("_.*", "", data_control.df$cell)
+
+data_control.df$cell<-sub(".*_", "", data_control.df$cell)
+
+
+
+data_control.df %<>%  mutate( group = embryos@meta.data$res.0.8)
+
+
+
+data_control.df %>% gather(gene,expression,-cell,-condition,-group) -> data_control.df_long
+
+data_control.df_long %>% group_by(group,condition,gene) %>% dplyr::mutate(total = length(cell),median_ng_expression=median(expression[expression>0]) %>% is.na %>% ifelse(0,median(expression[expression>0])),ng_freq=sum(expression>0)/length(expression),max_exp = max(expression)) ->exp_data_control.df
+
+
+exp_data_control.df %<>% dplyr::group_by(gene,condition) %>% dplyr::mutate(exp_group = group[which(expression==max(expression))[1]],expression_in_ht = median_ng_expression[which(group==exp_group)[1]] , expression_in_ot=weighted.mean(median_ng_expression[which(group!=exp_group & median_ng_expression>0)],total[which(group!=exp_group & median_ng_expression>0)]),ng_freq_in_ht = ng_freq[which(group==exp_group)[1]] , ng_freq_in_ot=weighted.mean(ng_freq[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])],total[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])]))
+
+
+exp_data_control.df %<>%  dplyr::group_by(condition,gene) %>% dplyr::summarize(expression.in.ht=expression_in_ht[1] ,expression.in.ot=expression_in_ot[1],ng.freq.in.ht= ng_freq_in_ht[1] ,ng.freq.in.ot=ng_freq_in_ot[1])  %>% unite(expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot,expression.in.ht,expression.in.ot,ng.freq.in.ht,ng.freq.in.ot) %>% spread(condition,expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot)
+
+
+exp_data_control.df %>% separate(mut,sep="_",c("mut_expression.in.ht","mut_expression.in.ot","mut_ng.freq.in.ht","mut_ng.freq.in.ot")) %>% separate(wt,sep="_",c("wt_expression.in.ht","wt_expression.in.ot","wt_ng.freq.in.ht","wt_ng.freq.in.ot")) -> wide.df
+
+wide.df[-1] %<>% mutate_if(is.character,as.numeric)
+
+wide.df %<>% dplyr::select(gene,wt_expression.in.ht,mut_expression.in.ht,wt_expression.in.ot,mut_expression.in.ot,wt_ng.freq.in.ht,mut_ng.freq.in.ht,wt_ng.freq.in.ot,mut_ng.freq.in.ot)
+wide.df[!(rowSums(is.na(wide.df))>0),] -> wide_m.df
+wide_m.df %<>% dplyr:: mutate(exp_diff_ht=wt_expression.in.ht-mut_expression.in.ht,exp_diff_ot=wt_expression.in.ot-mut_expression.in.ot,freq_diff_ht=wt_ng.freq.in.ht-mut_ng.freq.in.ht,freq_diff_ot=wt_ng.freq.in.ot-mut_ng.freq.in.ot)
+
+
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_ng.freq.in.ht","mut_ng.freq.in.ht","wt_ng.freq.in.ot","mut_ng.freq.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+
+
+```
+```{r filtered_lola_promoters_set}
+
+affected_genes.df <-readRDS("figure1h_lola_targets_heatmap_mut/enrichments.df.rds") %>%
+                    mutate(label = paste0(factor, ".", label)) %>%
+                    dplyr::select(-factor,-color,-calculation,-minimum_value,-max_quantile) %>%
+                    spread(key=label, value=enrichment) %>% 
+                    filter(polii.mut<2,polii.wt>4)
+
+data_lola.df <- data.df[,(colnames(data.df) %in% lola_bound_genes.df$fb_symbol) &(colnames(data.df) %in% affected_genes.df$fb_symbol)]
+
+data_lola.df$cell<-rownames(data.df)
+
+data_lola.df$condition<-sub("_.*", "", data_lola.df$cell)
+
+data_lola.df$cell<-sub(".*_", "", data_lola.df$cell)
+
+
+
+data_lola.df %<>%  mutate( group = embryos@meta.data$res.0.8)
+
+
+
+data_lola.df %>% gather(gene,expression,-cell,-condition,-group) -> data_lola.df_long
+
+data_lola.df_long %>% group_by(group,condition,gene) %>% dplyr::mutate(total = length(cell),median_ng_expression=median(expression[expression>0]) %>% is.na %>% ifelse(0,median(expression[expression>0])),ng_freq=sum(expression>0)/length(expression),max_exp = max(expression)) ->exp_data_lola.df
+
+
+exp_data_lola.df %<>% dplyr::group_by(gene,condition) %>% dplyr::mutate(exp_group = group[which(expression==max(expression))[1]],expression_in_ht = median_ng_expression[which(group==exp_group)[1]] , expression_in_ot=weighted.mean(median_ng_expression[which(group!=exp_group & median_ng_expression>0)],total[which(group!=exp_group & median_ng_expression>0)]),ng_freq_in_ht = ng_freq[which(group==exp_group)[1]] , ng_freq_in_ot=weighted.mean(ng_freq[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])],total[which(max_exp < (sort(max_exp,decreasing =FALSE) %>% unique)[5])]))
+
+exp_data_lola.df %<>%  dplyr::group_by(condition,gene) %>% dplyr::summarize(expression.in.ht=expression_in_ht[1] ,expression.in.ot=expression_in_ot[1],ng.freq.in.ht= ng_freq_in_ht[1] ,ng.freq.in.ot=ng_freq_in_ot[1])  %>% unite(expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot,expression.in.ht,expression.in.ot,ng.freq.in.ht,ng.freq.in.ot) %>% spread(condition,expression.in.ht_expression.in.ot_ng.freq.in.ht_ng.freq.in.ot)
+
+
+exp_data_lola.df %>% separate(mut,sep="_",c("mut_expression.in.ht","mut_expression.in.ot","mut_ng.freq.in.ht","mut_ng.freq.in.ot")) %>% separate(wt,sep="_",c("wt_expression.in.ht","wt_expression.in.ot","wt_ng.freq.in.ht","wt_ng.freq.in.ot")) -> wide.df
+
+wide.df[-1] %<>% mutate_if(is.character,as.numeric)
+
+wide.df %<>% dplyr::select(gene,wt_expression.in.ht,mut_expression.in.ht,wt_expression.in.ot,mut_expression.in.ot,wt_ng.freq.in.ht,mut_ng.freq.in.ht,wt_ng.freq.in.ot,mut_ng.freq.in.ot)
+wide.df[!(rowSums(is.na(wide.df))>0),] -> wide_m.df
+wide_m.df %<>% dplyr:: mutate(exp_diff_ht=wt_expression.in.ht-mut_expression.in.ht,exp_diff_ot=wt_expression.in.ot-mut_expression.in.ot,freq_diff_ht=wt_ng.freq.in.ht-mut_ng.freq.in.ht,freq_diff_ot=wt_ng.freq.in.ot-mut_ng.freq.in.ot)
+
+
+# wide_m.df[6:9] %>% as.matrix() %>% pheatmap(cluster_cols = FALSE)
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_ng.freq.in.ht","mut_ng.freq.in.ht","wt_ng.freq.in.ot","mut_ng.freq.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+
+wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+
+```
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

@@ -1,0 +1,118 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(Gviz)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(tximport)
+library(DESeq2)
+library(magrittr)
+library(pander)
+library(rhdf5)
+
+# Output folder for this document
+options(knitr.figure_dir = "figure3d_rnaseq_analysis")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/metapeaks.r")
+
+source("shared/promoter_element_enrichments.r")
+panderOptions('knitr.auto.asis', TRUE)
+
+source("shared/flybase.r")
+source("shared/gostats.r")
+
+cores <- function() { return(16) }
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+library(cowplot)
+```
+
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+## Overview
+
+Whole-embryo wild-type 14-17h and orc4 or orc4/ore50 mutants were processed with `kallisto` and compared with `DESeq2`. 
+
+Lola and control gene definitions are from figure 1e
+
+
+```{r calculate_differential_expression_in_wt_vs_orc4}
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+
+
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORC4_14to17h_1","ORC4_14to17h_2","ORC4_14to17h_3","ORC4_14to17h_4","wt_14to17h_1","wt_14to17h_2","wt_14to17h_3")]}
+
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "orc4_14to17h"), c(4,3))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_1+wt_14to17h_2+wt_14to17h_3)/3, orc4_14to17h = (ORC4_14to17h_1+ORC4_14to17h_2+ORC4_14to17h_3)/3) %>% dplyr::select(fb_gene_id,wt_14to17h,orc4_14to17h) ->TPM
+
+rnaseq %<>% merge(TPM)
+
+```
+
+
+```{r calculate_differential_expression_in_wt_vs_orc4,or50}
+
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORE50_ORC4_14to17h_1","ORE50_ORC4_14to17h_2","ORE50_ORC4_14to17h_3","ORE50_ORC4_14to17h_4","wt_14to17h_5","wt_14to17h_6")]}
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "ore50_orc4_14to17h"), c(4,2))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+rnaseq2 <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_5+wt_14to17h_6)/2, ore50_orc4_14to17h = (ORE50_ORC4_14to17h_1+ORE50_ORC4_14to17h_2+ORE50_ORC4_14to17h_3+ORE50_ORC4_14to17h_4)/4) %>% dplyr::select(fb_gene_id,wt_14to17h,ore50_orc4_14to17h) ->TPM
+
+rnaseq2 %>% merge(TPM) -> rnaseq2
+
+```
+
+
+
+```{r plot_changes_in_groups, dev=c('png','pdf'), fig.cap="all_samples_correlation", fig.width=18, fig.height=16}
+
+txs.gr<-flybase_txs_granges()
+lola_genes<-txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% (readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_promoter)]
+
+control_genes<-txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% (readRDS("figure1e_lola_targets_heatmap/groups.rds")$control)]
+
+rnaseq$group<-'others'
+rnaseq$group[rnaseq$fb_gene_id %in% lola_genes]<-'lola_genes'
+rnaseq$group[rnaseq$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq,aes(group,log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-2.5,2))+theme_cowplot()
+
+rnaseq2$group<-'others'
+rnaseq2$group[rnaseq2$fb_gene_id %in% lola_genes]<-'lola_genes'
+rnaseq2$group[rnaseq2$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq2,aes(group,log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-3,2))+theme_cowplot()
+
+```
+  
+```{r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

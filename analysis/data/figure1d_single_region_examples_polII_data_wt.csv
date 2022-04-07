@@ -1,0 +1,9 @@
+factor,condition,bw,color,plot_type
+Lola,14-17 hrs,../bw/Dme_emb_14-17h_Lola_I_2_rpm.bw,"""#484b4f""",polygon
+GAF,2-4 hrs,../bw/Dme_emb_2-4h_GAF_2_R2_rpm.bw,"""#808080""",polygon
+GAF,14-17hrs,../bw/Dme_emb_14-17h_GAF_2_rpm.bw,"""#808080""",polygon
+Rpb3,2-4 hrs,../bw/Dme_emb_2-4h_Rpb3_2_R2_rpm.bw,"""#FCB13C""",polygon
+Rpb3,14-17 hrs,../bw/Dme_emb_14-17h_Rpb3_2_rpm.bw,"""#FCB13C""",polygon
+DHS,2-4 hrs,../bw/stage05_rpm.bw,"""#6D6160""",polygon
+DHS,14-17 hrs,../bw/stage14_rpm.bw,"""#6D6160""",polygon
+Conservation,14-17hrs,../external_data/conservation/dm6.phastCons124way.bw,"""#000000""",polygon

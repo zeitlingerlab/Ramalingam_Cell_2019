@@ -1,0 +1,38 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+
+library(xtable)
+library(Biostrings)
+library(GenomicRanges)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(dplyr)
+
+options(knitr.figure_dir = "figure1b_supp_motif")
+
+source("shared/knitr_common.r")
+source("shared/flybase.r")
+
+````
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+``` {r}
+comparisson_groups.lst <-readRDS("figure1b_enrichments/comparisson_groups.lst.rds")
+
+txs.gr<-flybase_txs_granges()
+
+late_genes.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$late.df)$fb_tx_id]
+
+
+late_genes.gr %<>% resize(width=1, fix="start") %>% resize(width=200, fix="end")
+late_genes.gr
+
+
+peaks.seq <- getSeq(Dmelanogaster, late_genes.gr)
+names(peaks.seq) <- paste0("peak_", 1:length(peaks.seq))
+writeXStringSet(peaks.seq, filepath="macs_peaks_late_genes.fasta")
+
+
+
+# meme macs_peaks_late_genes.fasta -oc macs_peaks_late_genes_meme_output -p 5 -mod zoops -dna -nmotifs 10 -revcomp -maxw 12 -maxsize 5000000
+```
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}

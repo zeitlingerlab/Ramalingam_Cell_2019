@@ -1,0 +1,281 @@
+# Lola motif distribution in the lola peaks and the opening set genes(both at the promoter of closest gene and at the peak itself)
+
+Compare the lola motif distribution among promoter of all genes to the that of the opening set genes and lola bound genes
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+library(GenomicRanges)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(lattice)
+library(ggplot2)
+library(rtracklayer)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(cowplot)
+theme_set(theme_cowplot())
+source("shared/flybase.r")
+source("shared/metagene_common.r")
+
+
+options(knitr.figure_dir = "figure4_mnase_motif_orientation")
+
+source("shared/promoter_element_enrichments.r")
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+
+````
+```{r source}
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+}
+
+get_all_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+c(lola_peaks_1.gr,lola_peaks_2.gr)
+}
+
+
+plot_upstream<-300;
+plot_downstream<-300;
+read_matrix <- function(gr, cov, reverse_reads=FALSE) {
+  transform_function <- if(reverse_reads) { rev } else { identity }
+  o <- order(gr)
+  gr <- gr[o]
+  rl <- as(gr, "IntegerRangesList")
+  view <- RleViewsList(rleList=cov[names(rl)], rangesList=rl)
+  reads.list <- viewApply(view, function(x) { transform_function(as.numeric(x)) })
+  reads.m <- matrix(unlist(sapply(reads.list, as.numeric)), nrow=length(gr), byrow=TRUE)
+  reads.m[o, ] <- reads.m
+  reads.m
+}
+
+standard_metapeak_matrix <- function(regions.gr, sample.cov, upstream=plot_upstream, downstream=plot_downstream) {
+  regions.gr <- resize(regions.gr, width=upstream + downstream, fix="center")
+  
+  stopifnot(length(unique(width(regions.gr))) == 1)
+  
+  reads <- matrix(nrow=length(regions.gr), ncol=width(regions.gr)[1])
+  
+  i_p <- which(as.vector(strand(regions.gr) == "+" | strand(regions.gr) == "*"))
+  i_n <- which(as.vector(strand(regions.gr) == "-"))
+
+  message("There are ", length(i_p), " positive granges and ", length(i_n), " negative granges")
+  
+  if(class(sample.cov) == "character") {
+    sample.cov <- import.bw(sample.cov, which=regions.gr, asRle=TRUE)
+  }
+  
+  if(length(i_p) > 0) reads[i_p, ] <- read_matrix(regions.gr[i_p], sample.cov)
+  if(length(i_n) > 0) reads[i_n, ] <- read_matrix(regions.gr[i_n], sample.cov, reverse_reads=TRUE)
+
+  reads
+}
+
+```
+```{r files}
+
+lola_pi_peaks.gr <- get_lola_peaks(location=c("promoter","distal"),1000) %>% resize(fix="center",width=200)
+
+valid.chrs = c("chr2L","chr2R","chr3L","chr3R","chr4","chrX")
+
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+
+
+lola_pi_peaks.gr %<>% {.[seqnames(.) %in% valid.chrs]} %>% keepSeqlevels(valid.chrs)
+
+lola_g_match %<>% {.[seqnames(.) %in% valid.chrs]} %>% keepSeqlevels(valid.chrs)
+
+lola_motifs.gr<-lola_g_match[countOverlaps(lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)>0]
+
+
+
+
+```
+```{r mnase_metagene}
+
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+build_read_plot<-function(gene_group,mnase_lst,gene_lst){
+  mnase_lst %>% lapply(get_metagene_reads,gene_lst[[gene_group]],before_tss=1000, after_tss=999, smooth=41,
+                                        normalization_target=20000000*150) %>% bind_rows(.id="sample")
+}
+
+build_enrichment_plot<-function(gene_group,sample_lst,gene_lst){
+  sample_lst %>% lapply(get_metagene_enrichment,gene_lst[[gene_group]],before_tss=1000, after_tss=999, smooth=31)%>% bind_rows(.id="sample")
+}
+
+metagene_compatible_df<-function(region.gr){
+  
+region.gr %>% as.data.frame ->region.df
+region.df$strand<-ifelse(region.df$strand=='+',1,-1)
+region.df$chr<-region.df$seqnames
+region.df  
+}
+
+
+rev_matrix_mnase_plot<-function(mat,midpoint=1000,width=75){
+
+apply(mat[((rowSums(mat[,(midpoint-width):midpoint]))>= (rowSums(mat[,(midpoint+1):(midpoint+width)]))),],1,rev) %>% t ->flipped
+mat[((rowSums(mat[,(midpoint-width):midpoint]))< (rowSums(mat[,(midpoint+1):(midpoint+width)]))),] ->unflipped
+
+
+rbind(flipped,unflipped)[order(c(which(((rowSums(mat[,(midpoint-width):midpoint]))>= (rowSums(mat[,(midpoint+1):(midpoint+width)])))),which(((rowSums(mat[,(midpoint-width):midpoint]))< (rowSums(mat[,(midpoint+1):(midpoint+width)])))))),]
+}
+ 
+
+build_plot<-function(cov,gr,upstream=1000,downstream=1000,midpoint=1000,width=30,col=c("#FFFFFF","#3D1D10"),row.norm=TRUE,orient=TRUE,smooth=41){
+  if(orient==TRUE){
+    if(row.norm ==TRUE){
+      standard_metapeak_matrix(gr,cov,upstream=upstream,downstream=downstream) %>% rev_matrix_mnase_plot(midpoint=midpoint,width=width) ->temp
+
+      {(temp/(temp %>% rowMaxs))} %>% ifelse(is.nan(.),0,.) %>%  t %>% image(col=colorRampPalette(col)(1000),useRaster=TRUE);abline(v=0.5,col="black",lwd=0.25)
+    
+      {(temp/(temp %>% rowMaxs))} %>% ifelse(is.nan(.),0,.) %>% t %>% rowMeans() %>% caTools::runmean(k = smooth,alg="C") 
+  
+    
+    }else{
+    
+      standard_metapeak_matrix(gr,cov,upstream=upstream,downstream=downstream) %>% rev_matrix_mnase_plot(midpoint=midpoint,width=width) ->temp
+      temp %>% t %>% apply(.,1,function(x){x[x>quantile(x,0.95)]<-quantile(x,0.95);x}) %>% t %>% image(col=colorRampPalette(col)(1000),useRaster=TRUE);abline(v=0.5,col="black",lwd=0.25)
+    
+      temp %>% t %>% apply(.,1,function(x){x[x>quantile(x,0.95)]<-quantile(x,0.95);x}) %>% t %>% rowMeans() %>% caTools::runmean(k = smooth,alg="C") 
+    }
+  }else{
+    if(row.norm ==TRUE){
+      standard_metapeak_matrix(gr,cov,upstream=upstream,downstream=downstream) ->temp
+
+      {(temp/(temp %>% rowMaxs))} %>% ifelse(is.nan(.),0,.) %>%  t %>% image(col=colorRampPalette(col)(1000),useRaster=TRUE);abline(v=0.5,col="black",lwd=0.25)
+    
+      {(temp/(temp %>% rowMaxs))} %>% ifelse(is.nan(.),0,.) %>% t %>% rowMeans() %>% caTools::runmean(k = smooth,alg="C") 
+  
+    
+    }else{
+    
+      standard_metapeak_matrix(gr,cov,upstream=upstream,downstream=downstream) ->temp
+      temp %>% t %>% apply(.,1,function(x){x[x>quantile(x,0.95)]<-quantile(x,0.95);x}) %>% t %>% image(col=colorRampPalette(col)(1000),useRaster=TRUE);abline(v=0.5,col="black",lwd=0.25)
+    
+      temp %>% t %>% apply(.,1,function(x){x[x>quantile(x,0.95)]<-quantile(x,0.95);x}) %>% t %>% rowMeans() %>% caTools::runmean(k = smooth,alg="C") 
+    }
+  }
+  
+  
+}
+
+multi_plot<-function(i,cov_lst,gr,...){
+  build_plot(cov_lst[[i]],gr,...=...)
+  
+}
+
+```
+
+
+Look at the MNase profile at Lola target genes
+
+### Lola targets are defined by Lola binding- top 1000 peaks
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+```{r mnase_files}
+
+mnase_2_4.cov<-import("../bw/Dme_MNase_2-4h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}
+mnase_14_17.cov<- ((import("../bw/Dme_MNase_14-17h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_14-17h_2.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}))/2
+mnase_mut.cov<- ((import("../bw/Dme_MNase_orc4_14-17h_1rr.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_2rr.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../bw/Dme_MNase_orc4_14-17h_2.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}))/4
+
+mnase_lst<-list(Mnase_2_4hrs=mnase_2_4.cov,Mnase_14_17hrs=mnase_14_17.cov,Mnase_14_17hrs_mut = mnase_mut.cov)
+ 
+
+
+````
+```{r calculate_and_plot_mnase_signal_around_lola_motifs, dev=c("png","pdf"),fig.width=14, fig.height=10}
+
+
+#lola_motifs_reads.mat<-standard_metapeak_matrix(lola_motifs.gr, mnase_2_4.cov)
+#set.seed(0)
+
+# txs.gr<-flybase_txs_granges()
+# txs.gr %>% resize(fix='start',width=1) %>% resize(fix='center',width=500) ->promoter.gr
+# 
+# 
+# promoter_lola_g_match <- lola_g_match[countOverlaps(lola_g_match,promoter.gr,ignore.strand=TRUE)>0]
+# 
+# distal_lola_g_match <- lola_g_match[countOverlaps(lola_g_match,promoter.gr,ignore.strand=TRUE)==0]
+
+
+#non_bound_lola_motifs.gr<-sample(promoter_lola_g_match[countOverlaps(promoter_lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)<1],1000)
+
+#lola_pi_peaks.gr<-lola_pi_peaks.gr[countOverlaps(lola_pi_peaks.gr,distal_lola_g_match,ignore.strand=TRUE)>0]
+
+bound_lola_motifs.gr<-lola_g_match[countOverlaps(lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)>0]
+
+
+#bound_lola_motifs.gr<-lola_g_match[countOverlaps(lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)>0]
+
+
+groups<-names(mnase_lst)
+names(groups)<-groups 
+
+groups%>% lapply(multi_plot,mnase_lst,bound_lola_motifs.gr) %>% bind_rows() %>% mutate(rownames=rownames(.)) %>% gather(sample,enrichment,-rownames) %>% ggplot(aes(x=rownames %>% as.numeric,ymin=0,ymax=enrichment,fill=sample))+geom_ribbon(alpha=0.4)+theme_cowplot();
+
+
+shift_values<-sample(c(-85,85),length(bound_lola_motifs.gr),replace=TRUE)
+bound_lola_motifs.gr %>% as.data.frame %>% {.$start <- .$start+(shift_values);.$end <- .$end+shift_values;.} %>% GRangesFromDataFrames() -> shifted_bound_lola_motifs.gr
+
+groups%>% lapply(multi_plot,mnase_lst,shifted_bound_lola_motifs.gr) %>% bind_rows() %>% mutate(rownames=rownames(.)) %>% gather(sample,enrichment,-rownames) %>% ggplot(aes(x=rownames %>% as.numeric,ymin=0,ymax=enrichment,fill=sample))+geom_ribbon(alpha=0.4)+theme_cowplot();
+
+````
+
+```{r calculate_and_plot_mnase_signal_around_lola_motifs_promoter_distal, dev=c("png","pdf"),fig.width=14, fig.height=10}
+
+
+txs.gr<-flybase_txs_granges()
+txs.gr %>% resize(fix='start',width=1) %>% resize(fix='center',width=500) ->promoter.gr
+
+
+promoter_lola_g_match <- lola_g_match[countOverlaps(lola_g_match,promoter.gr,ignore.strand=TRUE)>0]
+
+distal_lola_g_match <- lola_g_match[countOverlaps(lola_g_match,promoter.gr,ignore.strand=TRUE)==0]
+
+
+bound_lola_motifs_promoter.gr<-promoter_lola_g_match[countOverlaps(promoter_lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)>0]
+
+
+bound_lola_motifs_distal.gr<-distal_lola_g_match[countOverlaps(distal_lola_g_match,lola_pi_peaks.gr,ignore.strand=TRUE)>0]
+
+
+groups<-names(mnase_lst)
+names(groups)<-groups 
+
+groups%>% lapply(multi_plot,mnase_lst,bound_lola_motifs_promoter.gr,orient=FALSE) %>% bind_rows() %>% mutate(rownames=rownames(.)) %>% gather(sample,enrichment,-rownames) %>% ggplot(aes(x=rownames %>% as.numeric,ymin=0,ymax=enrichment,fill=sample))+geom_ribbon(alpha=0.4)+theme_cowplot();
+
+groups%>% lapply(multi_plot,mnase_lst,bound_lola_motifs_distal.gr,orient=FALSE) %>% bind_rows() %>% mutate(rownames=rownames(.)) %>% gather(sample,enrichment,-rownames) %>% ggplot(aes(x=rownames %>% as.numeric,ymin=0,ymax=enrichment,fill=sample))+geom_ribbon(alpha=0.4)+theme_cowplot();
+
+
+````
+
+
+``` {r session_info, echo=FALSE}
+sessionInfo()
+````

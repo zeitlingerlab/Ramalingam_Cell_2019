@@ -1,0 +1,11 @@
+label,factor,window_upstream,window_downstream,ip,wce,normalization,replicate,minimum_value,max_quantile,color
+Epidermis,polii,0,200,Epidermis_7021_INTACT_Rpb3_14-17h_1_rpm.bw,Epidermis_7021_INTACT_WCE_14-17h_1_rpm.bw,TRUE,1,2,0.8,"""#3d5782"""
+Epidermis,polii,0,200,Epidermis_7021_INTACT_Rpb3_14-17h_2_rpm.bw,Epidermis_7021_INTACT_WCE_14-17h_2_rpm.bw,TRUE,2,2,0.8,"""#3d5782"""
+Gut,polii,0,200,Gut_110394_INTACT_Rpb3_14-17h_1_rpm.bw,Gut_110394_INTACT_WCE_14-17h_1_rpm.bw,TRUE,1,2,0.8,"""#3d5782"""
+Gut,polii,0,200,Gut_110394_INTACT_Rpb3_14-17h_2_rpm.bw,Gut_110394_INTACT_WCE_14-17h_2_rpm.bw,TRUE,2,2,0.8,"""#3d5782"""
+Muscle,polii,0,200,Muscle_mef2_INTACT_Rpb3_14-17h_1_rpm.bw,Muscle_mef2_INTACT_WCE_14-17h_1_rpm.bw,TRUE,1,2,0.8,"""#3d5782"""
+Muscle,polii,0,200,Muscle_mef2_INTACT_Rpb3_14-17h_2_rpm.bw,Muscle_mef2_INTACT_WCE_14-17h_2_rpm.bw,TRUE,2,2,0.8,"""#3d5782"""
+Neuron,polii,0,200,Neuron_elav_INTACT_Rpb3_14-17h_1_rpm.bw,Neuron_elav_INTACT_WCE_14-17h_1_rpm.bw,TRUE,1,2,0.8,"""#3d5782"""
+Neuron,polii,0,200,Neuron_elav_INTACT_Rpb3_14-17h_2_rpm.bw,Neuron_elav_INTACT_WCE_14-17h_2_rpm.bw,TRUE,2,2,0.8,"""#3d5782"""
+Trachea,polii,0,200,Trachea_8807_INTACT_Rpb3_14-17h_1_rpm.bw,Trachea_8807_INTACT_WCE_14-17h_1_rpm.bw,TRUE,1,2,0.8,"""#3d5782"""
+Trachea,polii,0,200,Trachea_8807_INTACT_Rpb3_14-17h_2_rpm.bw,Trachea_8807_INTACT_WCE_14-17h_2_rpm.bw,TRUE,2,2,0.8,"""#3d5782"""

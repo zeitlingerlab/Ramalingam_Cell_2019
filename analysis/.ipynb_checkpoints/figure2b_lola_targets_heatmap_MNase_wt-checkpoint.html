@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>Calculating Lola binding at Late promoters</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h1>Calculating Lola binding at Late promoters</h1>
+
+<p><strong>Project:</strong> Promoter Opening</p>
+
+<p><strong>Author:</strong> <a href="mailto:vir@stowers.org">Vivek</a></p>
+
+<p><strong>Generated:</strong> Mon Dec 02 2019, 08:09 PM</p>
+
+<h2>Samples overview</h2>
+
+<p>We will calculate the pol II enrichments for the following samples</p>
+
+<pre><code>## Warning in read.table(file = file, header = header, sep = sep, quote
+## = quote, : incomplete final line found by readTableHeader on &#39;data/
+## figure2b_lola_targets_heatmap_MNase_wt.csv&#39;
+</code></pre>
+
+<hr/>
+
+<p>label     factor   window_upstream   window_downstream                          ip                          wce   normalization   replicate   minimum_value   max_quantile     color   </p>
+
+<hr/>
+
+<p>wt_2-4h    Mnase          100                100           ../bw/Dme_MNase_2-4h_1.bam_from100to200_rpm.bw    NA        FALSE           1             0             0.85       &ldquo;#391B0E&rdquo; </p>
+
+<p>wt_14-17h   Mnase          100                100          ../bw/Dme_MNase_14-17h_1.bam_from100to200_rpm.bw   NA        FALSE           1             0             0.85       &ldquo;#391B0E&rdquo; </p>
+
+<h2> wt_14-17h   Mnase          100                100          ../bw/Dme_MNase_14-17h_2.bam_from100to200_rpm.bw   NA        FALSE           2             0             0.85       &ldquo;#391B0E&rdquo; </h2>
+
+<h2>load the samples</h2>
+
+<h2>Calculate enrichments</h2>
+
+<p>Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.</p>
+
+<h2>Save results</h2>
+
+<pre><code>## 
+##  Pairwise comparisons using Wilcoxon rank sum test 
+## 
+## data:  .$enrichment and .$time 
+## 
+##           wt_2-4h
+## wt_14-17h 1.1e-09
+## 
+## P value adjustment method: holm
+</code></pre>
+
+<pre><code>## 
+##  Pairwise comparisons using Wilcoxon rank sum test 
+## 
+## data:  .$enrichment and .$time 
+## 
+##           wt_2-4h
+## wt_14-17h 0.71   
+## 
+## P value adjustment method: holm
+</code></pre>
+
+<h2>Session information</h2>
+
+<p>For reproducibility, this analysis was performed with the following R/Bioconductor session:</p>
+
+<pre><code>R version 3.6.1 (2019-07-05)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 18.04.2 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.7.1
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.7.1
+
+locale:
+ [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+ [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+ [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+[10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] BSgenome.Dmelanogaster.UCSC.dm6_1.4.1 BSgenome_1.52.0                      
+ [3] Biostrings_2.52.0                     XVector_0.24.0                       
+ [5] rtracklayer_1.44.4                    GenomicRanges_1.36.1                 
+ [7] GenomeInfoDb_1.20.0                   IRanges_2.18.2                       
+ [9] S4Vectors_0.22.1                      BiocGenerics_0.30.0                  
+[11] pander_0.6.3                          magrittr_1.5                         
+[13] tidyr_1.0.0                           dplyr_0.8.3                          
+[15] ggplot2_3.2.1                         knitr_1.24                           
+
+loaded via a namespace (and not attached):
+ [1] SummarizedExperiment_1.14.1 tidyselect_0.2.5           
+ [3] xfun_0.9                    purrr_0.3.2                
+ [5] lattice_0.20-38             colorspace_1.4-1           
+ [7] vctrs_0.2.0                 XML_3.98-1.20              
+ [9] rlang_0.4.0                 pillar_1.4.2               
+[11] glue_1.3.1                  withr_2.1.2                
+[13] BiocParallel_1.18.1         matrixStats_0.55.0         
+[15] GenomeInfoDbData_1.2.1      lifecycle_0.1.0            
+[17] stringr_1.4.0               zlibbioc_1.30.0            
+[19] munsell_0.5.0               gtable_0.3.0               
+[21] evaluate_0.14               Biobase_2.44.0             
+[23] Rcpp_1.0.2                  backports_1.1.4            
+[25] scales_1.0.0                DelayedArray_0.10.0        
+[27] Rsamtools_2.0.0             digest_0.6.20              
+[29] stringi_1.4.3               grid_3.6.1                 
+[31] tools_3.6.1                 bitops_1.0-6               
+[33] lazyeval_0.2.2              RCurl_1.95-4.12            
+[35] tibble_2.1.3                crayon_1.3.4               
+[37] pkgconfig_2.0.2             zeallot_0.1.0              
+[39] ellipsis_0.2.0.1            Matrix_1.2-17              
+[41] assertthat_0.2.1            R6_2.4.0                   
+[43] GenomicAlignments_1.20.1    compiler_3.6.1             
+</code></pre>
+
+</body>
+
+</html>

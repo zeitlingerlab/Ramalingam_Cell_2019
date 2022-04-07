@@ -1,0 +1,806 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(Gviz)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(tximport)
+library(DESeq2)
+library(magrittr)
+library(pander)
+library(rhdf5)
+
+# Output folder for this document
+options(knitr.figure_dir = "other_analysis")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/metapeaks.r")
+
+source("shared/promoter_element_enrichments.r")
+panderOptions('knitr.auto.asis', TRUE)
+
+source("shared/flybase.r")
+source("shared/gostats.r")
+
+cores <- function() { return(16) }
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+library(cowplot)
+```
+
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+## Overview
+
+  - Define late induced genes
+  - GO analysis of late genes
+  - Seperate late genes to groups by pol II occupancy in different tissues
+  - RNA-seq expression
+  - Promoter element enrichments
+  - ImaGO terms
+  - Gene length
+  - ATAC 14-17h
+  - MNase 2-4h and 14-17hrs
+
+## Late induced genes and housekeeping genes
+
+Whole-embryo wild-type 2-4h (Nina) and 14-17h (Malini) were processed with `kallisto` and compared with `DESeq2`. 
+
+Late-induced genes are those considered up-regulated late versus early with a TPM of less than 25 early and greater than 100 late.
+
+As a comparison group, we will also define housekeeping genes as those that show no differential expression between the early and late time points and are expressed with an TPM of at least 100 in both stages.
+
+
+```{r define_late_and_housekeeping_genes, message=FALSE}
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+
+
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORC4_14to17h_1","ORC4_14to17h_2","ORC4_14to17h_3","ORC4_14to17h_4","wt_14to17h_1","wt_14to17h_2","wt_14to17h_3")]}
+
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "orc4_14to17h"), c(4,3))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_1+wt_14to17h_2+wt_14to17h_3)/3, orc4_14to17h = (ORC4_14to17h_1+ORC4_14to17h_2+ORC4_14to17h_3)/3) %>% dplyr::select(fb_gene_id,wt_14to17h,orc4_14to17h) ->TPM
+
+rnaseq %<>% merge(TPM)
+
+```
+
+
+```{r}
+
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORE50_ORC4_14to17h_1","ORE50_ORC4_14to17h_2","ORE50_ORC4_14to17h_3","ORE50_ORC4_14to17h_4","wt_14to17h_5","wt_14to17h_6")]}
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+sampleTable <- data.frame(condition = factor(rep(c("wt_14to17h", "ore50_orc4_14to17h"), c(4,2))))
+rownames(sampleTable) <- colnames(txi$counts)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_5+wt_14to17h_6)/2, ore50_orc4_14to17h = (ORE50_ORC4_14to17h_1+ORE50_ORC4_14to17h_2+ORE50_ORC4_14to17h_3+ORE50_ORC4_14to17h_4)/4) %>% dplyr::select(fb_gene_id,wt_14to17h,ore50_orc4_14to17h) ->TPM
+
+rnaseq %>% merge(TPM) -> rnaseq2
+
+
+
+````
+
+## GO analysis
+
+Below are the top 5 GO categories for each gene group (excluding categories that contain 5 or less genes). The full results are in the output folder for this document as `go_results.xls`.
+
+```{r go_analysis, results="asis"}
+panderOptions('knitr.auto.asis', FALSE)
+
+gene_groups <- list("Late-induced genes"=late_genes$fb_gene_id,
+                    "Housekeeping genes"=hk_genes$fb_gene_id)
+
+gene_universe <- rnaseq$fb_gene_id
+
+
+go_results<-gene_groups %>%
+    lapply(run_go, gene_universe) %>%
+    bind_rows(.id="gene_group")
+
+
+for(i in unique(go_results$gene_group)) {
+  filter(go_results, gene_group == i & Size >= 5) %>%
+    arrange(Pvalue) %>%
+    head(5) %>%
+    dplyr::select(-gene_group, -OddsRatio, -ExpCount) %>%
+    pander(caption=paste0("Gene group: ", i))
+}
+
+write.table(go_results, file=figure_path("go_results.xls"), quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t")
+
+#Late genes go terms figure based on excel sheet
+
+data.frame(term=c("chitin-based cuticle development","amino sugar metabolic process","anterograde trans-synaptic signaling","muscle system process"),p_value=c(29,22,8,6)) ->dfs
+
+dfs$term %<>% factor(c("muscle system process","anterograde trans-synaptic signaling","amino sugar metabolic process","chitin-based cuticle development"))
+
+dfs %>% ggplot(aes(term,p_value))+geom_bar(stat="identity") + coord_flip()
+```
+
+## Dividing genes by Pol II presence in different tissues
+
+Next, we will calculate Pol II enrichment levels at the promoters of all genes and divide the late-induced genes into groups based on the number of tissues where Pol II is detected at least 2-fold above background. We will use the following Pol II samples:
+
+```{r polii_samples, message=FALSE}
+pol_samples_df <- read.csv("data/samples.csv") %>%
+                  filter(factor == "polii") %>%
+                  dplyr::select(-starts_with("window_"))
+
+pol_samples_df %>% dplyr::select(-factor) %>% pander(caption="Pol II samples")
+```
+
+Pol II enrichment will be calculated in a window starting from the TSS and ending 200bp downstream.
+
+```{r measure_polii_signal}
+
+enrichments_for_sample <- function(i, samples.df, txs.gr) {
+  sample.bw <- file.path("../bw/", samples.df$ip[i])
+  wce.bw    <- file.path("../bw/", samples.df$wce[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  
+  regions.gr <- promoters(txs.gr, upstream=0, downstream=200)
+  
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(txs.gr)$region_wce <- regionSums(regions.gr, wce.bw)
+
+  mcols(txs.gr)$ip_total <- total_signal(sample.bw)
+  mcols(txs.gr)$wce_total <- total_signal(wce.bw)
+
+  mcols(txs.gr)$region_wce_min_coverage <- regionMins(regions.gr, wce.bw)
+
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+
+  txs.gr
+}
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs()
+
+
+  pol_data.df <- 1:nrow(pol_samples_df) %>%
+                 mclapply(enrichments_for_sample, pol_samples_df, txs.gr, mc.cores=cores(), mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+
+```
+
+Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.
+
+``` {r calculate_enrichments, include=FALSE}
+
+pol_enrichments.df <- pol_data.df %>% 
+                      group_by(label, factor) %>%
+                      mutate(median_region_wce = median(region_wce))
+
+pol_enrichments.df %<>% transform(enrichment = log2((region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total)))
+
+tss.infs <- which(is.infinite(pol_enrichments.df$enrichment))
+
+min.tss <- with(pol_enrichments.df, min(enrichment[is.finite(enrichment)]))
+
+if(length(tss.infs) > 0) pol_enrichments.df$enrichment[tss.infs] <- min.tss
+
+pol_enrichments.df %>%
+  ungroup %>%
+  dplyr::select(fb_tx_id, fb_gene_id, fb_symbol, enrichment, factor, label) %>%
+  saveRDS(file=figure_path("pol_enrichments.df.rds"))
+
+```
+
+```{r enrichment_summary}
+pol_enrichments.df %>%
+  group_by(label, factor) %>%
+  summarize(median_enrichment = median(enrichment),
+            max_enrichment = max(enrichment)) %>%
+  pander(caption="Summary of Pol II enrichments (log2)")
+```
+
+```{r divide_by_tissue_polii}
+
+pol_single_tx.df <- pol_enrichments.df %>%
+                    group_by(factor, label, fb_gene_id) %>%
+                    summarise(fb_tx_id   = fb_tx_id[which.max(enrichment)],
+                              enrichment = max(enrichment)) %>%
+                    ungroup
+
+pol.wide <- pol_single_tx.df %>%
+            mutate(label = paste0(factor, ".", label)) %>%
+            dplyr::select(-factor, -fb_tx_id) %>%
+            spread(key=label, value=enrichment)
+
+counts.df <- pol_single_tx.df %>%
+             filter(factor == "polii" & label %in% c("glia", "gut", "muscle", "neuron", "trachea", "epidermis")) %>%
+             group_by(fb_gene_id) %>%
+             summarize(below_bg_tissues = sum(enrichment < 0),
+                       above_bg_tissues = sum(enrichment > 1))
+
+pol.wide %<>% merge(counts.df)
+```
+
+Using a threshold of 2-fold enrichment over input, we can divide the late-induced genes by the number of tissues where Pol II is detected:
+
+```{r late_induced_tissue_counts}
+pol.wide %>% 
+  filter(fb_gene_id %in% late_genes$fb_gene_id) %>%
+  group_by(above_bg_tissues) %>%
+  summarize(count = n()) %>%
+  dplyr::select(Tissues=above_bg_tissues, everything()) %>%
+  pander(caption="Late-induced genes")
+```
+
+We will also define fewer groups by combining some of the above groups:
+
+```{r define_combined_groups}
+tissue_groups <- data.frame(above_bg_tissues=0:6,
+                            tissue_group4=c("0 tissues", 
+                                            rep("1-2 tissues", times=2),
+                                            rep("2-4 tissues", times=2),
+                                            rep("5-6 tissues", times=2)))
+pol.wide %<>% merge(tissue_groups)
+
+pol.wide %>%
+  filter(fb_gene_id %in% late_genes$fb_gene_id) %>%
+  group_by(tissue_group4) %>%
+  summarize(count = n()) %>%
+  dplyr::select(Tissues=tissue_group4, everything()) %>%
+  pander(caption="Alternate groups for late-induced genes")
+```
+
+## RNA-seq expression
+
+```{r rnaseq_expression}
+
+expression_plot <- function(groups, rnaseq) {
+  exp.df <- groups %>%
+            lapply(function(gene_ids) {
+              subset(rnaseq, fb_gene_id %in% gene_ids)
+            }) %>%
+            bind_rows(.id="group_name")
+  g <- ggplot(exp.df, aes(x=group_name, y=log2(wt_14to17h))) +
+       geom_boxplot() + 
+       theme_bw() + 
+       labs(x="", y="Late embryo expression (log2 FPKM)")
+  g
+}
+
+expression_plot_14and17 <- function(groups, rnaseq) {
+  exp.df <- groups %>%
+            lapply(function(gene_ids) {
+              subset(rnaseq, fb_gene_id %in% gene_ids)
+            }) %>%
+            bind_rows(.id="group_name")
+  g <- ggplot(exp.df, aes(x=group_name, y=log2(value), fill= group_name)) +
+       geom_boxplot() +facet_grid(~variable)+ 
+       theme_bw() + ylim(c(0,10))+
+       labs(x="", y="Late expression (log2 TPM)")
+  g
+}
+calculate_expression_pvalue <- function(groups, rnaseq, test_group_1, test_group_2, variable, alternative) {
+  exp.df <- groups %>%
+            lapply(function(gene_ids) {
+              subset(rnaseq, fb_gene_id %in% gene_ids)
+            }) %>%
+            bind_rows(.id="group_name")
+wilcox.test(exp.df%>% filter(group_name ==  test_group_1) %>% dplyr::select(variable) %>% as.matrix,exp.df%>% filter(group_name == test_group_2) %>% dplyr::select(variable) %>% as.matrix, alternative = alternative)
+}
+
+late_wide <- pol.wide %>%
+             filter(fb_gene_id %in% late_genes$fb_gene_id) 
+
+
+saveRDS(object =late_wide, figure_path("late_wide.df.rds"))
+
+
+rnaseq_7_groups <- split(late_wide$fb_gene_id, late_wide$above_bg_tissues)
+
+rnaseq_4_groups <- split(late_wide$fb_gene_id, late_wide$tissue_group4)
+
+expression_plot(rnaseq_4_groups, rnaseq)
+
+expression_plot(rnaseq_7_groups, rnaseq)
+
+calculate_expression_pvalue(rnaseq_4_groups, rnaseq, '0 tissues','5-6 tissues','wt_14to17h','two.sided')
+
+calculate_expression_pvalue(rnaseq_4_groups, rnaseq2, '0 tissues','5-6 tissues','wt_14to14.5h','two.sided')
+
+calculate_expression_pvalue(rnaseq_4_groups, rnaseq2, '0 tissues','5-6 tissues','wt_17to17.5h','two.sided')
+
+rnaseq2 %<>% gather(variable,value,-1:-9)
+
+expression_plot_14and17(rnaseq_4_groups, rnaseq2)
+
+expression_plot_14and17(rnaseq_7_groups, rnaseq2)
+
+```
+
+```{r promoter_elements_by_late_housekeeping, fig.width=11, fig.height=6}
+
+promoter_element_heatmap<-function(plot.df, 
+                                     title,
+                                     element.order=c("GAGA","TATA", "Inr", "DPE", "PB","DRE", "Motif1", "Motif6", "Motif7"),
+                                     manual.scale=c(),
+                                     star_pvalue=0.05) {
+
+  plot.df <- transform(plot.df, enrichment = ifelse(enrichment < 1, -1 / enrichment, enrichment),
+                                sig_label = ifelse(pvalue < star_pvalue, "*", ""))
+
+  if(length(manual.scale) > 0) {
+    plot.df$enrichment[plot.df$enrichment<min(manual.scale)]<-min(manual.scale)
+    plot.df$enrichment[plot.df$enrichment>max(manual.scale)]<-max(manual.scale)
+  } 
+
+  plot.df <- subset(plot.df, element %in% element.order)
+  plot.df$element <- factor(plot.df$element, levels=element.order)
+
+  g <- ggplot(plot.df, aes(x=element, y=group_name, fill=enrichment)) + 
+       geom_tile() + 
+       geom_text(aes(label=sig_label), color="white") +
+       theme_bw() +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       scale_fill_gradientn(name="Enrichment", space="Lab", na.value="yellow",
+                            values=c(0, 0.4,0.6,1), 
+                            colours=c("#000000", "#cccccc", "#cccccc", "#FC8F00"), guide="colourbar") +
+       labs(x="", y="", title=title) +
+       theme(panel.grid.minor=element_blank(),
+             panel.grid.major=element_blank())
+  g
+}
+
+select_txs <- function(gene_ids, pol.df) {
+  highest_txs <- pol.df %>%
+                 filter(factor == "polii" & label == "embryo14") %>%
+                 filter(fb_gene_id %in% gene_ids) %>%
+                 group_by(fb_gene_id) %>%
+                 summarize(fb_tx_id = fb_tx_id[which.max(enrichment)])
+  highest_txs$fb_tx_id
+}
+
+promoter_element_plot <- function(groups, pol.df, rnaseq) {
+  pe_groups <- groups %>% lapply(select_txs, pol.df)
+  names(pe_groups) <- paste0(names(pe_groups), "\n(", elementNROWS(pe_groups), ")")
+  all_txs <- select_txs(rnaseq$fb_gene_id, pol.df)
+
+  pe.df <- promoter_element_enrichments(pe_groups, all_txs)
+  pe.df$group_name %<>% factor(., levels=unique(.))
+  
+  g <- promoter_element_heatmap(pe.df, title="Late genes",manual.scale=c(4,-4))
+  list(plot=g, groups=pe_groups)
+}
+
+lst<-list(late_genes=late_genes$fb_gene_id,hk_genes = hk_genes$fb_gene_id)
+
+pe_results <- lst %>% promoter_element_plot(pol_enrichments.df, rnaseq)
+
+pe_results$plot
+```
+
+
+## Promoter element enrichments
+
+```{r promoter_elements, fig.width=11, fig.height=6}
+
+promoter_element_heatmap<-function(plot.df, 
+                                     title,
+                                     element.order=c("GAGA","TATA", "Inr", "DPE", "PB","DRE", "Motif1", "Motif6", "Motif7"),
+                                     manual.scale=c(),
+                                     star_pvalue=0.05) {
+
+  plot.df <- transform(plot.df, enrichment = ifelse(enrichment < 1, -1 / enrichment, enrichment),
+                                sig_label = ifelse(pvalue < star_pvalue, "*", ""))
+
+  if(length(manual.scale) > 0) {
+    plot.df$enrichment[plot.df$enrichment<min(manual.scale)]<-min(manual.scale)
+    plot.df$enrichment[plot.df$enrichment>max(manual.scale)]<-max(manual.scale)
+  } 
+
+  plot.df <- subset(plot.df, element %in% element.order)
+  plot.df$element <- factor(plot.df$element, levels=element.order)
+
+  g <- ggplot(plot.df, aes(x=element, y=group_name, fill=enrichment)) + 
+       geom_tile() + 
+       geom_text(aes(label=sig_label), color="white") +
+       theme_bw() +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       scale_fill_gradientn(name="Enrichment", space="Lab", na.value="yellow",
+                            values=c(0, 0.4,0.6,1), 
+                            colours=c("#000000", "#cccccc", "#cccccc", "#FC8F00"), guide="colourbar") +
+       labs(x="", y="", title=title) +
+       theme(panel.grid.minor=element_blank(),
+             panel.grid.major=element_blank())
+  g
+}
+
+select_txs <- function(gene_ids, pol.df) {
+  highest_txs <- pol.df %>%
+                 filter(factor == "polii" & label == "embryo14") %>%
+                 filter(fb_gene_id %in% gene_ids) %>%
+                 group_by(fb_gene_id) %>%
+                 summarize(fb_tx_id = fb_tx_id[which.max(enrichment)])
+  highest_txs$fb_tx_id
+}
+
+promoter_element_plot <- function(groups, pol.df, rnaseq) {
+  pe_groups <- groups %>% lapply(select_txs, pol.df)
+  names(pe_groups) <- paste0(names(pe_groups), "\n(", elementNROWS(pe_groups), ")")
+  all_txs <- select_txs(rnaseq$fb_gene_id, pol.df)
+
+  pe.df <- promoter_element_enrichments(pe_groups, all_txs)
+  pe.df$group_name %<>% factor(., levels=unique(.))
+  
+  g <- promoter_element_heatmap(pe.df, title="Late genes by tissues with Pol II",manual.scale=c(4,-4))
+  list(plot=g, groups=pe_groups)
+}
+
+pe_results_7 <- rnaseq_7_groups %>% promoter_element_plot(pol_enrichments.df, rnaseq)
+pe_results_4 <- rnaseq_4_groups %>% promoter_element_plot(pol_enrichments.df, rnaseq)
+
+pe_results_7$plot
+pe_results_4$plot
+```
+
+
+## ImaGO terms
+
+```{r imago_terms}
+
+imago_plot <- function(groups) {
+  
+  imago <- readRDS("data/external/insitu/insitu.rds") %>%
+           filter(stage %in% c("stage11-12", "stage13-16"))
+  
+  all_terms <- imago$term %>% unique
+  
+  remove_terms <- c("maternal", "ubiq", "no staining") %>%
+                  lapply(grep, all_terms) %>%
+                  do.call(c, .)
+  
+  all_terms <- all_terms[-remove_terms]
+  
+  imago %<>% filter(term %in% all_terms)
+  
+  counts.df <- groups %>%
+               lapply(function(gene_ids) {
+                 imago %>% filter(fb_gene_id %in% gene_ids) %>%
+                   group_by(fb_gene_id) %>%
+                   summarize(unique_terms = length(unique(term)))
+               }) %>%
+               bind_rows(.id="group_name")
+  
+  medians.df <- counts.df %>%
+                group_by(group_name) %>%
+                summarize(genes = n(),
+                          mean_count = mean(unique_terms)) %>%
+                ungroup %>%
+                arrange(mean_count)
+                
+  medians.df %>% pander(caption="Genes with ImaGO annotations")
+  
+  counts.df$group_name %<>% factor(levels=medians.df$group_name)
+  
+  g <- ggplot(counts.df, aes(x=group_name, y=unique_terms)) +
+       geom_boxplot() +
+       theme_bw() +
+       labs(x="", y="Number of unique terms per gene")
+  
+  g
+}
+
+calculate_counts_pvalue <- function(groups,test_group_1, test_group_2, variable, alternative) {
+  imago <- readRDS("data/external/insitu/insitu.rds") %>%
+           filter(stage %in% c("stage11-12", "stage13-16"))
+  
+  all_terms <- imago$term %>% unique
+  
+  remove_terms <- c("maternal", "ubiq", "no staining") %>%
+                  lapply(grep, all_terms) %>%
+                  do.call(c, .)
+  
+  all_terms <- all_terms[-remove_terms]
+  
+  imago %<>% filter(term %in% all_terms)
+  
+  counts.df <- groups %>%
+               lapply(function(gene_ids) {
+                 imago %>% filter(fb_gene_id %in% gene_ids) %>%
+                   group_by(fb_gene_id) %>%
+                   summarize(unique_terms = length(unique(term)))
+               }) %>%
+               bind_rows(.id="group_name")
+  
+  medians.df <- counts.df %>%
+                group_by(group_name) %>%
+                summarize(genes = n(),
+                          mean_count = mean(unique_terms)) %>%
+                ungroup %>%
+                arrange(mean_count)
+                
+  counts.df$group_name %<>% factor(levels=medians.df$group_name)
+  
+wilcox.test(counts.df%>% filter(group_name ==  test_group_1) %>% dplyr::select(variable) %>% as.matrix,counts.df%>% filter(group_name == test_group_2) %>% dplyr::select(variable) %>% as.matrix, alternative = alternative)
+}
+
+rnaseq_7_groups %>% imago_plot
+rnaseq_4_groups %>% imago_plot
+
+calculate_counts_pvalue(rnaseq_7_groups, '0','6','unique_terms','two.sided')
+
+calculate_counts_pvalue(rnaseq_4_groups, '0 tissues','5-6 tissues','unique_terms','two.sided')
+
+```
+
+
+## Gene length
+
+``` {r gene_length}
+
+gene_length_plot <- function(groups) {
+  txs.df <- flybase_txs_granges() %>%
+            filter_chrs %>%
+            as.data.frame
+  
+  sizes.df <- groups %>%
+              lapply(function(gene_ids) {
+                txs.df %>%
+                  filter(fb_gene_id %in% gene_ids) %>%
+                  group_by(fb_gene_id) %>%
+                  summarize(width = max(width))
+              }) %>%
+              bind_rows(.id="group_name")
+  
+  g <- ggplot(sizes.df, aes(x=group_name, y=log10(width))) +
+       geom_boxplot() +
+       theme_bw() +
+       labs(x="", y="Gene length (log10 base pairs)")
+  g 
+}
+
+calculate_lengths_pvalue <- function(groups,test_group_1, test_group_2, variable, alternative) {
+  txs.df <- flybase_txs_granges() %>%
+            filter_chrs %>%
+            as.data.frame
+  
+  sizes.df <- groups %>%
+              lapply(function(gene_ids) {
+                txs.df %>%
+                  filter(fb_gene_id %in% gene_ids) %>%
+                  group_by(fb_gene_id) %>%
+                  summarize(width = max(width))
+              }) %>%
+              bind_rows(.id="group_name")
+  
+sizes.df %>% {wilcox.test(filter(. , group_name ==  test_group_1) %>% dplyr::select(variable) %>% as.matrix,filter(. , group_name == test_group_2) %>% dplyr::select(variable) %>% as.matrix, alternative = alternative)}
+}
+
+rnaseq_7_groups %>% gene_length_plot
+rnaseq_4_groups %>% gene_length_plot
+
+calculate_lengths_pvalue(rnaseq_7_groups, '0','6','width','two.sided')
+
+calculate_lengths_pvalue(rnaseq_4_groups, '0 tissues','5-6 tissues','width','two.sided')
+
+```
+
+```{r go_analysis_tata_paused, results="asis"}
+panderOptions('knitr.auto.asis', FALSE)
+
+gene_groups <- list("TATA genes"=rnaseq_4_groups[[1]],
+                    "Paused genes"=rnaseq_4_groups[[4]])
+
+gene_universe <- rnaseq$fb_gene_id
+
+
+go_results<-gene_groups %>%
+    lapply(run_go, gene_universe) %>%
+    bind_rows(.id="gene_group")
+
+
+for(i in unique(go_results$gene_group)) {
+  filter(go_results, gene_group == i & Size >= 5) %>%
+    arrange(Pvalue) %>%
+    head(10) %>%
+    dplyr::select(-gene_group, -OddsRatio, -ExpCount) %>%
+    pander(caption=paste0("Gene group: ", i))
+}
+
+write.table(go_results, file=figure_path("go_results_tata_paused.xls"), quote=FALSE, row.names=FALSE, col.names=TRUE, sep="\t")
+
+#TATA genes go terms figure based on excel sheet
+data.frame(term=c("chitin-based cuticle development","amino sugar metabolic process","cell wall macromolecule","body morphogenesis"),p_value=c(26,13,4,2)) ->dfs
+
+dfs$term %<>% factor(c("body morphogenesis","cell wall macromolecule","amino sugar metabolic process","chitin-based cuticle development"))
+
+dfs %>% ggplot(aes(term,p_value))+geom_bar(stat="identity") + coord_flip()
+
+#Paused genes go terms figure based on excel sheet
+data.frame(term=c("chitin-based embryonic cuticle biosynthesis","amino sugar metabolic process","developmental process","cell communication"),p_value=c(6,5,5,5)) ->dfs
+
+dfs$term %<>% factor(c("cell communication","developmental process","amino sugar metabolic process","chitin-based embryonic cuticle biosynthesis"))
+
+dfs %>% ggplot(aes(term,p_value))+geom_bar(stat="identity") + coord_flip()
+```
+
+
+### ATAC 14-17h
+
+``` {r atac_metagene, eval=TRUE, fig.width=12, fig.height=6}
+
+txs.gr <- flybase_txs_granges() %>%
+          filter_chrs
+
+ATAC_plot <- function(groups, txs.gr) {
+  rank_groups <- groups %>%
+                 lapply(function(txs) {
+                   subset(txs.gr, fb_tx_id %in% .(txs))
+                 })
+  names(rank_groups) %<>% gsub("\\n", " ", .)
+  
+  ATAC.bw <- "../bw/rpm/dme_emb_14_17h_atac_1.bam_from0to100_rpm.bw"
+
+  
+  ATAC_reads.df <- multisample_standard_metapeak(rank_groups, list("ATAC 14-17h"=ATAC.bw ), 
+                                                  upstream=500, downstream=1000, smooth=15, cores=1)
+  
+  g <- ggplot(ATAC_reads.df, aes(x=tss_distance, y=reads, color=peak_group)) +
+       geom_line() +
+       scale_color_discrete("Late embryo Pol II tissue count") +
+       theme_bw() +
+       labs(x="Distance to TSS", y="Average ATAC signal") 
+  
+  g
+}
+
+select_txs <- function(gene_ids, pol.df) {
+  highest_txs <- pol.df %>%
+                 filter(factor == "polii" & label == "embryo14") %>%
+                 filter(fb_gene_id %in% gene_ids) %>%
+                 group_by(fb_gene_id) %>%
+                 summarize(fb_tx_id = fb_tx_id[which.max(enrichment)])
+  highest_txs$fb_tx_id
+}
+
+
+rnaseq_7_groups_txs <- rnaseq_7_groups %>% lapply(select_txs, pol_enrichments.df) 
+rnaseq_4_groups_txs <- rnaseq_4_groups %>% lapply(select_txs, pol_enrichments.df) 
+
+
+  rnaseq_7_groups_txs %>% ATAC_plot(txs.gr)  
+  rnaseq_4_groups_txs %>% ATAC_plot(txs.gr)  
+
+```
+
+### MNase 2-4h and 14-17hrs
+
+``` {r nucleosome_metagene, eval=TRUE, fig.width=12, fig.height=6}
+
+txs.gr <- flybase_txs_granges() %>%
+          filter_chrs
+
+
+mnase_plot <- function(groups, txs.gr) {
+  rank_groups <- groups %>%
+                 lapply(function(txs) {
+                   subset(txs.gr, fb_tx_id %in% .(txs))
+                 })
+  names(rank_groups) %<>% gsub("\\n", " ", .)
+  
+  mnase_14_17h.bw <- "../bw/rpm/Dme_MNase_14-17h_1.granges.rds_from100to200_rpm.bw"
+  
+  mnase_2_4h.bw <- "../bw/rpm/Dme_MNase_2-4h_1.granges.rds_from100to200_rpm.bw"
+  
+  mnase_reads.df <- multisample_standard_metapeak(rank_groups, list("Mnase 2-4h"= mnase_2_4h.bw,"Mnase 14-17h"= mnase_14_17h.bw ),
+                                                  upstream=500, downstream=1000, smooth=15, cores=1)
+  
+  g <- ggplot(mnase_reads.df, aes(x=tss_distance, y=reads, color=peak_group)) +
+       geom_line(aes(alpha = sample_name)) +
+       scale_color_discrete("Late embryo Pol II tissue count") +
+       theme_bw() +
+       labs(x="Distance to TSS", y="Average MNase signal") 
+  
+  g
+}
+
+rnaseq_7_groups_txs <- rnaseq_7_groups %>% lapply(select_txs, pol_enrichments.df) 
+rnaseq_4_groups_txs <- rnaseq_4_groups %>% lapply(select_txs, pol_enrichments.df) 
+
+
+  rnaseq_7_groups_txs %>% mnase_plot(txs.gr)  
+  
+  rnaseq_4_groups_txs %>% mnase_plot(txs.gr)  
+
+```
+
+
+```{r ATAC_plot}
+## Dividing genes by Pol II presence in different tissues
+
+atac_samples_df <- read.csv("data/figure5c_tissue_atac_samples.csv") %>%
+                  filter(factor == "ATAC") 
+
+atac_samples_df %>% dplyr::select(-factor) %>% pander(caption="ATAC samples")
+
+
+signal_for_samples <- function(i, samples.df, txs.gr) {
+  sample.bw <- file.path("../bw/rpm/", samples.df$ip[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+
+  regions.gr <- resize(txs.gr,fix="start", width=1) 
+  
+  regions.gr <- resize(regions.gr, fix="start" ,width=samples.df$window_downstream[i])
+  
+  regions.gr <- resize(regions.gr, fix="end" ,width=(samples.df$window_downstream[i]+samples.df$window_upstream[i]))
+  
+  mcols(txs.gr)$start_r<-start(regions.gr)
+  mcols(txs.gr)$end_r<-end(regions.gr)
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+  txs.gr
+}
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs()
+
+
+atac_data.df <- 1:nrow(atac_samples_df) %>%
+                 mclapply(signal_for_samples, atac_samples_df, txs.gr, mc.cores=cores(), mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+
+
+atac_signals.df <- atac_data.df 
+
+atac_signals.df %<>% transform(signal = region_ip )
+
+atac_signals.df %>% dplyr::select(fb_tx_id, fb_gene_id, label, fb_symbol, signal) %>% merge(late_wide)  %>% filter(fb_tx_id %in% (rnaseq_7_groups_txs %>% unlist))  %>% {.$signal[.$signal > quantile(.$signal,0.98)]<-quantile(.$signal,0.98);.$signal[.$signal < quantile(.$signal,0.05)]<-quantile(.$signal,0.05); . } %>% ggplot(aes(label,fb_tx_id,fill=log2(signal)))+geom_tile()+facet_wrap(~tissue_group4,scales = "free")+scale_fill_gradient2(low = "white", mid = "#ffc1c1",high = "red", midpoint = 9) 
+
+atac_signals.df %>% dplyr::select(fb_tx_id, fb_gene_id, label, fb_symbol, signal) %>% merge(late_wide)  %>% filter(fb_tx_id %in% (rnaseq_7_groups_txs %>% unlist)) %>% filter(tissue_group4 == '0 tissues') %>% spread(key = label, value = signal)%>% mutate(avg_signal = (gut+muscle+neuron+epidermis)/4) %>% dplyr::select(avg_signal) %>% as.matrix ->tata_genes_atac
+
+atac_signals.df %>% dplyr::select(fb_tx_id, fb_gene_id, label, fb_symbol, signal) %>% merge(late_wide)  %>% filter(fb_tx_id %in% (rnaseq_7_groups_txs %>% unlist)) %>% filter(tissue_group4 == '5-6 tissues') %>% spread(key = label, value = signal)%>% mutate(avg_signal = (gut+muscle+neuron+epidermis)/4) %>% dplyr::select(avg_signal) %>% as.matrix ->paused_genes_atac
+
+wilcox.test(tata_genes_atac,paused_genes_atac,'two.sided')
+
+atac_signals.df %>%
+  ungroup %>%
+  dplyr::select(fb_tx_id, fb_gene_id, fb_symbol, signal) %>%
+  saveRDS(file=figure_path("atac_signals.df.rds"))
+
+```
+
+  
+```{r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

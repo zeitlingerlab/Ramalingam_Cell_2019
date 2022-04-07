@@ -1,0 +1,73 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(rtracklayer)
+library(magrittr)
+library(dplyr)
+library(Gviz)
+library(parallel)
+library(tidyr)
+library(ggplot2)
+library(cowplot)
+cores_to_use=8
+# Output folder for this document
+options(knitr.figure_dir = "figure3c_lola_targets_expression_polII")
+
+source("shared/granges_common.r")
+source("shared/knitr_common.r")
+source("shared/flybase.r")
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe %>% select(-strand,-start,-end,-seqnames)))}
+
+
+```
+
+# 
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+``` {r plot_relative_expression, dev=c("png","pdf"),fig.width=12,fig.height=12}
+txs.gr<-flybase_txs_granges()
+lola_bound_genes.gr<-txs.gr[txs.gr$fb_tx_id %in% readRDS("figure1e_lola_targets_heatmap/groups.rds")$lola_promoters]
+
+
+read.csv("data/st1_average_cluster_expression.csv") ->expression.df
+expression.df %<>% mutate(fb_symbol = X)
+
+late_genes<-readRDS("data/late_genes_lst.RDS")
+late_genes_groups.df<-readRDS("data/late_wide.df.rds")
+
+expression.df %>% filter(fb_symbol %in% (txs.gr$fb_symbol[txs.gr$fb_gene_id %in% (late_genes$hk_genes)$fb_gene_id] %>% unique)) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> hk_genes.mat 
+
+expression.df %>% filter(fb_symbol %in% (txs.gr$fb_symbol[txs.gr$fb_gene_id %in% (late_genes_groups.df %>% filter(tissue_group4 == '1-2 tissues') %>% `$`(fb_gene_id))] %>% unique)) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> TATA_genes.mat 
+
+
+expression.df %>% filter(fb_symbol %in% lola_bound_genes.gr$fb_symbol) %>% dplyr::select(-fb_symbol,-X) %>% as.matrix -> lola_targets.mat                                                                                                                                                                                                      
+
+
+lola_targets.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="lola targets") ->lola_targets_exp.df
+
+hk_genes.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="housekeeping genes") ->hk_genes_exp.df
+
+TATA_genes.mat %>% {./rowMax(.)} %>% apply(.,1,sort,decreasing=TRUE) %>% do.call(rbind,.) %>% colMeans() %>% t %>% as.data.frame %>% {names(.)<-1:16;.} %>% tidyr::gather(tissue,value) %>% mutate(group="TATA genes") ->TATA_genes_exp.df
+
+
+rbind(lola_targets_exp.df,hk_genes_exp.df,TATA_genes_exp.df) ->temp.df
+
+temp.df$group%<>% factor(levels=c("housekeeping genes","lola targets","TATA genes"))
+
+temp.df %>% ggplot2::ggplot(aes(x=tissue %>% as.integer,y=group,fill=value))+geom_tile(color="black")+scale_fill_gradient(low="white",high="red")+theme_cowplot()
+
+
+
+```
+
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

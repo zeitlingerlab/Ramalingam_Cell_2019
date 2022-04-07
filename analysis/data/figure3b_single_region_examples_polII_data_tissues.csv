@@ -1,0 +1,12 @@
+factor,condition,bw,color,plot_type,ylimit
+Rpb3,epidermis,../bw/Epidermis_7021_INTACT_Rpb3_14-17h_1_rpm.bw,"""#FCB13C""",polygon,50
+Rpb3,gut,../bw/Gut_110394_INTACT_Rpb3_14-17h_1_rpm.bw,"""#FCB13C""",polygon,50
+Rpb3,muscle,../bw/Muscle_mef2_INTACT_Rpb3_14-17h_1_rpm.bw,"""#FCB13C""",polygon,50
+Rpb3,neuron,../bw/Neuron_elav_INTACT_Rpb3_14-17h_2_rpm.bw,"""#FCB13C""",polygon,50
+Rpb3,trachea,../bw/Trachea_8807_INTACT_Rpb3_14-17h_1_rpm.bw,"""#FCB13C""",polygon,50
+Rpb3,trachea_mut,../bw/Trachea_8807_orc4_INTACT_Rpb3_14-17h_1_R2_rpm.bw,"""#FCB13C""",polygon,50
+Lola,epidermis,../bw/Epidermis_7021_INTACT_Lola_I_14-17h_2_R2_rpm.bw,"""#6C1E10""",polygon,50
+Lola,gut,../bw/Gut_110394_INTACT_Lola_I_14-17h_2_R2_rpm.bw,"""#6C1E10""",polygon,50
+Lola,muscle,../bw/Muscle_mef2_INTACT_Lola_I_14-17h_1_R2_rpm.bw,"""#6C1E10""",polygon,50
+Lola,neuron,../bw/Neuron_elav_INTACT_Lola_I_14-17h_2_R2_rpm.bw,"""#6C1E10""",polygon,50
+Lola,trachea,../bw/Trachea_8807_INTACT_Lola_I_14-17h_2_R2_rpm.bw,"""#6C1E10""",polygon,50

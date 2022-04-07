@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>Calculating Lola binding at Late promoters</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h1>Calculating Lola binding at Late promoters</h1>
+
+<p><strong>Project:</strong> Promoter Opening</p>
+
+<p><strong>Author:</strong> <a href="mailto:vir@stowers.org">Vivek</a></p>
+
+<p><strong>Generated:</strong> Tue Nov 26 2019, 02:10 AM</p>
+
+<pre><code>##   Location Frequency
+## 1   distal 0.3953988
+## 2 promoter 0.6046012
+</code></pre>
+
+<pre><code>##     Motif Frequency
+## 1  absent 0.2121874
+## 2 present 0.7878126
+</code></pre>
+
+<pre><code>## Warning in .Seqinfo.mergexy(x, y): Each of the 2 combined objects has sequence levels not in the other:
+##   - in &#39;x&#39;: chrM, chrX_DS484099v1_random, chrX_DS484216v1_random, chrY_DS485329v1_random
+##   - in &#39;y&#39;: chrUn_DS483562v1, chrUn_DS484160v1, chrUn_DS484280v1, chrX_DS484953v1_random
+##   Make sure to always combine/compare objects based on the same reference
+##   genome (use suppressWarnings() to suppress this warning).
+</code></pre>
+
+<pre><code>## GRanges object with 373 ranges and 7 metadata columns:
+##         seqnames    ranges strand |                     name      score
+##            &lt;Rle&gt; &lt;IRanges&gt;  &lt;Rle&gt; |              &lt;character&gt;  &lt;numeric&gt;
+##     [1]    chr3R  10100743      * | lola_i_peaks_1_peak_1183  3950.8147
+##     [2]     chrX  13563645      * | lola_i_peaks_1_peak_1653 2978.07568
+##     [3]    chr3R  26261636      * | lola_i_peaks_1_peak_1418 2608.04272
+##     [4]    chr2L  12974258      * |  lola_i_peaks_1_peak_205 2173.13135
+##     [5]    chr3L  18801513      * | lola_i_peaks_1_peak_1017 2042.17615
+##     ...      ...       ...    ... .                      ...        ...
+##   [369]    chr2L   1048210      * |   lola_i_peaks_1_peak_24   41.12166
+##   [370]    chr2R  18498088      * |  lola_i_peaks_1_peak_579   40.92282
+##   [371]    chr3R  22639743      * | lola_i_peaks_1_peak_1359   40.79797
+##   [372]    chr2R  16240725      * |  lola_i_peaks_1_peak_549   40.31985
+##   [373]    chr2L   2400147      * |   lola_i_peaks_1_peak_58   40.24127
+##         nearest_gene_id   nearest_gene distance_to_tss inside_gene    location
+##             &lt;character&gt;    &lt;character&gt;       &lt;integer&gt; &lt;character&gt; &lt;character&gt;
+##     [1]     FBgn0263413 lncRNA:CR43459             192        TRUE    promoter
+##     [2]     FBgn0086674        Tango13             177       FALSE    promoter
+##     [3]     FBgn0000064            Ald              44       FALSE    promoter
+##     [4]     FBgn0263598        Vha68-2              63       FALSE    promoter
+##     [5]     FBgn0267601 lncRNA:CR45939             200       FALSE    promoter
+##     ...             ...            ...             ...         ...         ...
+##   [369]     FBgn0031294           IA-2             156       FALSE    promoter
+##   [370]     FBgn0028496        CG30116              61       FALSE    promoter
+##   [371]     FBgn0266418           wake              64       FALSE    promoter
+##   [372]     FBgn0034098          krimp               2       FALSE    promoter
+##   [373]     FBgn0031424          VGlut             147        TRUE    promoter
+##   -------
+##   seqinfo: 6 sequences from an unspecified genome; no seqlengths
+</code></pre>
+
+<h2>Promoter element heatmap</h2>
+
+<p><img src="data:image/png;base64,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" alt=""/></p>
+
+<h2>GO terms</h2>
+
+<h3>Lola genes</h3>
+
+<p>See full spreadsheet in folder <code>figure1e_lola_targets_heatmap/</code></p>
+
+<pre><code>   GOBPID       Pvalue OddsRatio  ExpCount Count Size
+</code></pre>
+
+<p>1  GO:0048878 1.558736e-07  4.327184  5.523830    21  257
+2  GO:0051046 2.796762e-07  7.700348  1.848441    12   86
+3  GO:0055086 4.343209e-07  3.529943  7.995582    25  372
+4  GO:0032879 5.811210e-07  3.212302  9.839340    28  463
+5  GO:0042593 1.729308e-06 11.720408  0.859740     8   40
+6  GO:0032502 2.245356e-06  1.886438 60.310764    93 2806
+7  GO:0098655 6.026626e-06  4.181596  4.277207    16  199
+8  GO:0006733 6.374221e-06  7.979044  1.332597     9   62
+9  GO:0098660 6.849831e-06  4.135660  4.320194    16  201
+10 GO:0070838 1.203069e-05  6.364142  1.805454    10   84
+11 GO:0060402 1.363233e-05 46.240964  0.171948     4    8
+12 GO:0035556 1.535285e-05  2.527852 13.636874    31  644
+13 GO:0044282 2.540674e-05  4.402202  3.288506    13  153
+14 GO:0065008 2.605057e-05  2.305954 17.546568    36  889
+15 GO:0050896 2.946275e-05  1.971635 33.865192    57 1714
+                                                     Term
+1                                    chemical homeostasis
+2                                 regulation of secretion
+3  nucleobase-containing small molecule metabolic process
+4                              regulation of localization
+5                                     glucose homeostasis
+6                                   developmental process
+7                          cation transmembrane transport
+8               oxidoreduction coenzyme metabolic process
+9                   inorganic ion transmembrane transport
+10                           divalent metal ion transport
+11                     calcium ion transport into cytosol
+12                      intracellular signal transduction
+13                       small molecule catabolic process
+14                       regulation of biological quality
+15                                   response to stimulus</p>
+
+<h3>No change genes</h3>
+
+<p>See full spreadsheet in folder</p>
+
+<pre><code>   GOBPID       Pvalue OddsRatio  ExpCount Count Size
+</code></pre>
+
+<p>1  GO:0009888 3.569556e-60  5.403244  55.23882   194  904
+2  GO:0009887 1.039385e-57  6.485417  36.70605   154  602
+3  GO:0002009 3.880267e-53  7.041193  28.80323   131  463
+4  GO:0035239 1.078066e-50  6.931990  27.88917   126  442
+5  GO:0002165 2.400664e-49  5.980185  34.59771   139  542
+6  GO:0022008 6.654818e-49  6.051892  33.43552   136  569
+7  GO:0048569 1.073135e-48  6.970757  26.30802   120  416
+8  GO:0032501 1.373159e-46  3.694646 119.85399   268 2228
+9  GO:0035107 1.161819e-45  7.674311  21.07434   104  329
+10 GO:0048737 1.351163e-44  7.704539  20.32999   101  320
+11 GO:0030182 3.558180e-41  6.243019  25.43483   109  431
+12 GO:0007560 9.289646e-40  7.062303  20.12023    95  323
+13 GO:0000904 1.144106e-37  5.507334  28.54803   111  449
+14 GO:0032990 1.689723e-37  5.428953  29.14536   112  455
+15 GO:0120039 4.241100e-37  5.463282  28.44074   110  444
+                                                    Term
+1                                     tissue development
+2                             animal organ morphogenesis
+3                         morphogenesis of an epithelium
+4                                     tube morphogenesis
+5                     instar larval or pupal development
+6                                           neurogenesis
+7                post-embryonic animal organ development
+8                       multicellular organismal process
+9                                appendage morphogenesis
+10           imaginal disc-derived appendage development
+11                                neuron differentiation
+12                           imaginal disc morphogenesis
+13        cell morphogenesis involved in differentiation
+14                               cell part morphogenesis
+15 plasma membrane bounded cell projection morphogenesis</p>
+
+<h2>Samples overview</h2>
+
+<p>We will calculate the pol II enrichments for the following samples</p>
+
+<hr/>
+
+<p>label   factor   window_upstream   window_downstream                 ip                             wce                normalization   replicate   minimum_value   max_quantile     color   </p>
+
+<hr/>
+
+<p>early   polii           0                 200            Dme_emb_2-4h_Rpb3_1_rpm.bw      Dme_emb_2-4h_WCE_1_rpm.bw         TRUE            1             2             0.95       &ldquo;#3d5782&rdquo; </p>
+
+<p>early   polii           0                 200          Dme_emb_2-4h_Rpb3_2_R2_rpm.bw    Dme_emb_2-4h_WCE_2_R2_rpm.bw       TRUE            2             2             0.95       &ldquo;#3d5782&rdquo; </p>
+
+<p>late    polii           0                 200           Dme_emb_14-17h_Rpb3_1_rpm.bw    Dme_emb_14-17h_WCE_1_rpm.bw        TRUE            1             2             0.95       &ldquo;#3d5782&rdquo; </p>
+
+<p>late    polii           0                 200           Dme_emb_14-17h_Rpb3_2_rpm.bw    Dme_emb_14-17h_WCE_2_rpm.bw        TRUE            2             2             0.95       &ldquo;#3d5782&rdquo; </p>
+
+<p>late    polii           0                 200           Dme_emb_14-17h_Rpb3_3_rpm.bw    Dme_emb_14-17h_WCE_3_rpm.bw        TRUE            3             2             0.95       &ldquo;#3d5782&rdquo; </p>
+
+<p>early    DHS           150                150                  stage05_rpm.bw                        NA                    FALSE           1             0             0.95       &ldquo;#59456B&rdquo; </p>
+
+<p>late     DHS           150                150                  stage14_rpm.bw                        NA                    FALSE           1             0             0.95       &ldquo;#59456B&rdquo; </p>
+
+<h2> late     Lola          150                150          Dme_emb_14-17h_Lola_I_1_rpm.bw   Dme_emb_14-17h_WCE_1_rpm.bw        TRUE            1             2             0.95       &ldquo;#0086B9&rdquo; </h2>
+
+<h2>load the samples</h2>
+
+<h2>Calculate enrichments</h2>
+
+<p>Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.</p>
+
+<h2>Save results</h2>
+
+<pre><code>## 
+##  Pairwise comparisons using Wilcoxon rank sum test 
+## 
+## data:  .$enrichment and .$group_name 
+## 
+##         lola_promoters
+## control &lt;2e-16        
+## 
+## P value adjustment method: holm
+</code></pre>
+
+<h2>Session information</h2>
+
+<p>For reproducibility, this analysis was performed with the following R/Bioconductor session:</p>
+
+<pre><code>R version 3.6.1 (2019-07-05)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 18.04.2 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/blas/libblas.so.3.7.1
+LAPACK: /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3.7.1
+
+locale:
+ [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+ [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+ [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+[10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+
+attached base packages:
+[1] stats4    parallel  stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] GO.db_3.8.2                           BSgenome.Dmelanogaster.UCSC.dm6_1.4.1
+ [3] BSgenome_1.52.0                       Biostrings_2.52.0                    
+ [5] XVector_0.24.0                        rtracklayer_1.44.4                   
+ [7] GenomicRanges_1.36.1                  GenomeInfoDb_1.20.0                  
+ [9] scales_1.0.0                          cowplot_1.0.0                        
+[11] org.Dm.eg.db_3.8.2                    GOstats_2.50.0                       
+[13] graph_1.62.0                          Category_2.50.0                      
+[15] Matrix_1.2-17                         AnnotationDbi_1.46.1                 
+[17] IRanges_2.18.2                        S4Vectors_0.22.1                     
+[19] Biobase_2.44.0                        BiocGenerics_0.30.0                  
+[21] matrixStats_0.55.0                    pander_0.6.3                         
+[23] magrittr_1.5                          tidyr_1.0.0                          
+[25] dplyr_0.8.3                           ggplot2_3.2.1                        
+[27] knitr_1.24                           
+
+loaded via a namespace (and not attached):
+ [1] bit64_0.9-7                 splines_3.6.1              
+ [3] assertthat_0.2.1            RBGL_1.60.0                
+ [5] blob_1.2.0                  GenomeInfoDbData_1.2.1     
+ [7] Rsamtools_2.0.0             pillar_1.4.2               
+ [9] RSQLite_2.1.2               backports_1.1.4            
+[11] lattice_0.20-38             glue_1.3.1                 
+[13] digest_0.6.20               colorspace_1.4-1           
+[15] GSEABase_1.46.0             XML_3.98-1.20              
+[17] pkgconfig_2.0.2             genefilter_1.66.0          
+[19] zlibbioc_1.30.0             purrr_0.3.2                
+[21] xtable_1.8-4                BiocParallel_1.18.1        
+[23] tibble_2.1.3                annotate_1.62.0            
+[25] ellipsis_0.2.0.1            withr_2.1.2                
+[27] SummarizedExperiment_1.14.1 lazyeval_0.2.2             
+[29] survival_2.44-1.1           crayon_1.3.4               
+[31] memoise_1.1.0               evaluate_0.14              
+[33] tools_3.6.1                 lifecycle_0.1.0            
+[35] stringr_1.4.0               munsell_0.5.0              
+[37] DelayedArray_0.10.0         compiler_3.6.1             
+[39] rlang_0.4.0                 grid_3.6.1                 
+[41] RCurl_1.95-4.12             AnnotationForge_1.26.0     
+[43] labeling_0.3                bitops_1.0-6               
+[45] gtable_0.3.0                DBI_1.0.0                  
+[47] R6_2.4.0                    GenomicAlignments_1.20.1   
+[49] bit_1.1-14                  zeallot_0.1.0              
+[51] Rgraphviz_2.28.0            stringi_1.4.3              
+[53] Rcpp_1.0.2                  vctrs_0.2.0                
+[55] tidyselect_0.2.5            xfun_0.9                   
+</code></pre>
+
+</body>
+
+</html>

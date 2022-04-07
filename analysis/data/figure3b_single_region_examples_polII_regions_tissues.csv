@@ -1,0 +1,3 @@
+seqnames,start,end,strand,fb_gene_id,fb_gene_symbol
+chrX,10328800,10330050,-,FBgn0011770,Gip
+chr3R,6339280,6342510,+,FBgn0037430,Osi20

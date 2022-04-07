@@ -1,0 +1,151 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+
+library(magrittr)
+library(matrixStats)
+library(gtools)
+
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(dplyr)
+library(tidyr)
+library(doMC)
+library(Hmisc)
+
+# Output folder for this document
+options(knitr.figure_dir = "figure3e_mnase_boxplot_lola_distance")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("shared/knitr_common.r")
+source("shared/metagene_common.r")
+
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+
+get_lola_peaks<-function(number=1000){
+
+import("/n/projects/vir/lola/14-17/lola_pi_peaks_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("/n/projects/vir/lola/14-17/lola_pi_14_17_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs)
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=1) %>% resize(fix='end',width=300) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr
+}
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+```
+
+```{r header_child, child="child_docs/header_child.Rmd"}
+```
+
+## Overview
+
+Look at mnase changes between wt and mut based on lola binding to TSS distance
+```{r load_data}
+
+mnase.df <- readRDS("figure3_mnase signal wt and mut/mnase_signal.df.rds")
+
+promoter.gr<-flybase_txs_granges()
+promoter.gr %<>% resize(fix="start",width=1) %>% resize(fix="end",width=500)
+
+lola_peaks_promoter.gr<-get_lola_peaks(number=750)
+
+lola_peaks_promoter.gr %<>% resize(fix='center',width=500)
+
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+mcols(lola_peaks_promoter.gr)$lola_motif<-countOverlaps(lola_peaks_promoter.gr,lola_g_match,ignore.strand=TRUE)
+lola_peaks_promoter.gr<-lola_peaks_promoter.gr[lola_peaks_promoter.gr$lola_motif>=1]
+
+promoter.gr[promoter.gr$fb_gene_id %in% lola_peaks_promoter.gr$nearest_gene_id] ->lola_peaks_with_motif.gr
+
+merge((lola_peaks_with_motif.gr %>% as.data.frame),lola_peaks_promoter.gr %>% as.data.frame %>% select(fb_gene_id=nearest_gene_id,distance_to_tss)) %>% GRangesFromDataFrames ->lola_peaks_with_motif.gr
+
+mnase.df %<>% spread(key=label, value=read_normalized_signal)	%>%
+	 mutate(wt=rowMeans(cbind(wt_1,wt_2,wt_3,wt_4)),mut=rowMeans(cbind(mut_1,mut_2,mut_3,mut_4))) %>%
+	  select(-wt_1,-wt_2,-wt_3,-wt_4,-mut_1,-mut_2,-mut_3,-mut_4) %>%
+	   gather(label,enrichment,-1:-4)
+
+lola_peaks_with_motif.gr %>% as.data.frame ->promoter.df
+
+
+mnase.df %<>% as.data.frame %>% mutate(label=paste0(label,".",factor)) %>%  
+			spread(key= label, value = enrichment) %>% 
+		 	 	group_by(fb_gene_id) %>% 
+		 	 	dplyr::summarise(fb_tx_id  = fb_tx_id[which.max(mut.mnase)]) %>%
+		 	 	 `$`(fb_tx_id) %>% { subset(mnase.df, subset = fb_tx_id %in% .) }
+mnase.df %<>% group_by(label, factor) %>%
+            dplyr::mutate(normalized_enrichment = pmax(0, pmin(1, enrichment / quantile(enrichment, 0.95))))
+
+		
+mnase.df %<>% filter(label %in% c("wt","mut"))
+
+saveRDS(mnase.df, file=figure_path("mnase_by_group.df.rds"))
+
+```
+
+## mnasel  changes based on distance bewtween lola binding site to TSS
+
+```{r tissue_heatmap, fig.width=14, fig.height=10}
+
+mnase.df %>% as.data.frame %>% mutate(label=paste0(label,".",factor)) %>% 
+			select(fb_tx_id,label,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment) %>% 
+			select(fb_tx_id,wt.mnase,mut.mnase) -> values.df
+
+promoter.df %<>% {.[.$fb_tx_id %in% mnase.df$fb_tx_id,]}
+
+saveRDS(promoter.df, file=figure_path("lola_peaks_with_motif.df.rds"))
+
+promoter.df$group[promoter.df$distance_to_tss<100]<-'<100'
+promoter.df$group[promoter.df$distance_to_tss<250 & promoter.df$distance_to_tss>=100]<-'>100-<250'
+promoter.df$group[promoter.df$distance_to_tss<500 & promoter.df$distance_to_tss>=250]<-'>250-<500'
+promoter.df$group[promoter.df$distance_to_tss>500]<-'>500'
+
+build_boxplot <- function(groups,promoter.df) {
+
+	boxplot.df <- groups %>%
+                lapply(function(tx_ids) {
+                  subset(values.df, fb_tx_id %in% tx_ids) %>% mutate(mnase_diff=mut.mnase-wt.mnase) 
+                }) %>%
+                bind_rows(.id="group_name") %>% gather(time,enrichment,-group_name,-fb_tx_id,-wt.mnase,-mut.mnase) 
+boxplot.df$group_name%<>% factor(levels=c("<100",'>100-<250','>250-<500','>500'))
+
+g <- ggplot(boxplot.df, aes(x=time,y=enrichment)) +	geom_boxplot(fill="white") + facet_grid(~group_name) +
+			       theme_bw() +scale_y_continuous(breaks=c(0.0,1.0))+
+         theme(text = element_text(size=15),axis.text.x=element_text(angle=0),panel.grid.major = element_blank(),
+           panel.grid.minor = element_blank(),strip.background = element_blank(),
+          panel.border = element_rect(colour = "black"),
+          panel.background = element_blank())
+			  list(plots=list(g), data=boxplot.df)
+}
+
+boxplot_all   <- split(promoter.df$fb_tx_id,promoter.df$group) %>% build_boxplot
+boxplot_all$plots
+
+saveRDS(boxplot_all, file=figure_path("boxplot_all.lst.rds"))
+
+
+```
+
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

@@ -1,0 +1,133 @@
+# Conservation of Lola motifs
+
+###Comments: I will compare lola motifs conservation with lola motifs not at promoters, not bound by lola, region around lola - 100 bp and promoters -300:0
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+options(knitr.figure_dir = "figure1sb_lola_motif_conservation")
+library(GenomicRanges)
+library(plyr)
+library(tidyr)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(DESeq2)
+library(dplyr)
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+calculate_conservation<-function(region.gr,bw)
+{
+  
+  region.gr$conservation<-regionMeans(region.gr,bw)
+  data.frame(conservation=region.gr$conservation)
+}  
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+}
+````
+
+
+```{r load_comparision_groups}
+conservation.bw_path<-'../external_data/conservation/dm6.phastCons124way.bw'
+
+valid.chrs = c("chr2L","chr2R","chr3L","chr3R","chr4","chrX")
+
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+lola_g_match %<>% {.[seqnames(.) %in% valid.chrs]} %>% keepSeqlevels(valid.chrs)
+
+promoters.gr<-flybase_txs_granges() %>% resize(fix="start",width=1) %>% resize(fix="start",width=50) %>% resize(fix="end",width=500)
+
+lola_peaks.gr<-get_lola_peaks(location = c("promoter","distal"),number=1000) %>% resize(fix="center",width=200)
+
+
+mcols(promoters.gr)$lola<-countOverlaps(promoters.gr,lola_peaks.gr,ignore.strand=TRUE)
+lola_promoter.gr<-promoters.gr[promoters.gr$lola>=1]
+
+
+mcols(lola_g_match)$promoter<-countOverlaps(lola_g_match,promoters.gr,ignore.strand=TRUE)
+lola_motifs_at_promoters.gr<-lola_g_match[lola_g_match$promoter>=1]
+lola_motifs_at_distal.gr<-lola_g_match[lola_g_match$promoter==0]
+
+promoters.gr$lola_motif<-countOverlaps(promoters.gr,lola_g_match,ignore.strand=TRUE)
+promoters_with_lola_motif.gr<-promoters.gr[promoters.gr$lola_motif>=1]
+
+
+
+mcols(lola_g_match)$lola<-countOverlaps(lola_g_match,lola_peaks.gr,ignore.strand=TRUE)
+lola_motifs_bound.gr<-lola_g_match[lola_g_match$lola>=1]
+lola_motifs_bound_not.gr<-lola_g_match[lola_g_match$lola==0]
+lola_motifs_bound_around.gr<-resize(lola_motifs_bound.gr,fix='center',width=100)
+
+
+mcols(lola_motifs_bound.gr)$promoter<-countOverlaps(lola_motifs_bound.gr,promoters.gr,ignore.strand=TRUE)
+lola_motifs_bound_at_promoters.gr<-lola_motifs_bound.gr[lola_motifs_bound.gr$promoter>=1]
+lola_motifs_bound_at_distal.gr<-lola_motifs_bound.gr[lola_motifs_bound.gr$promoter==0]
+
+lola_motifs_bound_at_promoters_around.gr<-resize(lola_motifs_bound_at_promoters.gr,fix='center',width=100)
+lola_motifs_bound_at_distal_around.gr<-resize(lola_motifs_bound_at_distal.gr,fix='center',width=100)
+
+
+promoters.gr$lola_motif_bound<-countOverlaps(promoters.gr,lola_motifs_bound.gr,ignore.strand=TRUE)
+promoters_with_lola_motif_bound.gr<-promoters.gr[promoters.gr$lola_motif_bound>=1]
+
+
+mcols(lola_motifs_bound_not.gr)$promoter<-countOverlaps(lola_motifs_bound_not.gr,promoters.gr,ignore.strand=TRUE)
+lola_motifs_bound_not_at_promoters.gr<-lola_motifs_bound_not.gr[lola_motifs_bound_not.gr$promoter>=1]
+
+````
+
+
+```{r plots, echo=FALSE,dev=c("png","pdf"), fig.height=12, fig.width=12}
+
+
+list(lola_motifs_bound=lola_motifs_bound.gr,lola_motifs_bound_not=lola_motifs_bound_not.gr, control_around=lola_motifs_bound_around.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name") %>% ggplot(aes(x=group_name,y=conservation))+geom_boxplot() +theme_bw() +
+       
+       theme(panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+
+
+list(lola_motifs_bound=lola_motifs_bound.gr,lola_motifs_bound_not=lola_motifs_bound_not.gr, control_around=lola_motifs_bound_around.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name") %>% {pairwise.wilcox.test(.$conservation,.$group_name,p.adj = "bonf")}
+
+list(lola_motifs_promoter=lola_motifs_at_promoters.gr,lola_motifs_distal=lola_motifs_at_distal.gr, control_lola_motif_containing_promoters= promoters_with_lola_motif.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name") %>% ggplot(aes(x=group_name,y=conservation))+geom_boxplot() +theme_bw() +
+       
+       theme(panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+
+list(lola_motifs_bound=lola_motifs_bound.gr,lola_motifs_bound_not=lola_motifs_bound_not.gr, control_around=lola_motifs_bound_around.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name") %>% {pairwise.wilcox.test(.$conservation,.$group_name,p.adj = "bonf")}
+
+list(lola_motifs_bound_at_promoters=lola_motifs_bound_at_promoters.gr,lola_motifs_bound_at_distal=lola_motifs_bound_at_distal.gr,lola_motifs_bound_at_promoters_around=lola_motifs_bound_at_promoters_around.gr,promoters_with_lola_motif_bound=promoters_with_lola_motif_bound.gr,lola_motifs_bound_at_distal_around=lola_motifs_bound_at_distal_around.gr,lola_motifs_not_bound_at_promoters=lola_motifs_bound_not_at_promoters.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name") %>% ggplot(aes(x=group_name,y=conservation))+geom_boxplot() +theme_bw() +
+       
+       theme(panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+
+list(lola_motifs_bound_at_promoters=lola_motifs_bound_at_promoters.gr,lola_motifs_bound_at_distal=lola_motifs_bound_at_distal.gr,lola_motifs_bound_at_promoters_around=lola_motifs_bound_at_promoters_around.gr,promoters_with_lola_motif_bound=promoters_with_lola_motif_bound.gr,lola_motifs_bound_at_distal_around=lola_motifs_bound_at_distal_around.gr,lola_motifs_not_bound_at_promoters=lola_motifs_bound_not_at_promoters.gr) %>% lapply(calculate_conservation, conservation.bw_path) %>% bind_rows(.id="group_name")  %>% {pairwise.wilcox.test(.$conservation,.$group_name,p.adj = "bonf")}
+````
+
+
+``` {r session_info, echo=FALSE, comment=NA}
+sessionInfo()
+```

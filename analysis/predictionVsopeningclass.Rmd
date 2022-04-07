@@ -1,0 +1,138 @@
+Aim: Looking at the nucleosome prediction at the opening set and constant set genes
+
+This document was generated on `r format(Sys.time(), "%a %b %d %Y, %I:%M %p")`.
+
+Author: [Vivek](mailto:vir@stowers.org)
+
+
+```{r library}
+library(GenomicRanges)
+library(ggplot2)
+library(plyr)
+library(rtracklayer)
+library(Biostrings)
+library(reshape2)
+library(BSgenome.Dmelanogaster.UCSC.dm3)
+library(doMC)
+registerDoMC(cores=10)
+````
+```{r source}
+# loading some scripts from Jeff for analysis
+regionSums <- function(regions, cvg) {
+    seqlevels(regions) <- names(cvg)
+    oo <- order(regions)
+    regions <- regions[oo]
+    ans <- unlist(viewSums(Views(cvg, as(regions, "RangesList"))), use.names = FALSE)
+    ans[oo] <- ans  # restore original order
+    ans
+}
+
+regionWhichMaxs <- function(regions, cvg) {
+    seqlevels(regions) <- names(cvg)
+    oo <- order(regions)
+    regions <- regions[oo]
+    ans <- unlist(viewWhichMaxs(Views(cvg, as(regions, "RangesList"))), use.names = FALSE)
+    ans[oo] <- ans  # restore original order
+    ans
+}
+
+total_signal <- function(cov) {
+    sum(as.numeric(sapply(cov, function(x) sum(as.numeric(x)))))
+}
+
+get_load <- function(filename) {
+    # message('Loading ', filename, ' ... ', appendLF=FALSE)
+    o <- updateObject(get(load(filename)))
+    # message('OK')
+    o
+}
+
+
+source("/n/projects/vir/shared/peaks_genes.r")
+lola_14_peaks_path<-"/n/projects/vir/lola/14-17/lola_pi_14_17_peaks_2_summits.bed"
+
+````
+
+
+```{r processing and grouping}
+valid.chrs <- c("chr2L", "chr2R", "chr3L", "chr3R", "chr4", "chrX")
+fb_txs <- get_load("/n/projects/vir/gaffactor/flybase/fb.transcripts.r5.47.RData")
+fb_txs <- subset(fb_txs, chr %in% valid.chrs)
+
+supp.dfs<-read.table(file="/n/projects/vir/gaffactor/PIIS2211124712004214.mmc2.prn", header = FALSE, sep = "", skip=1)
+names(supp.dfs)<-c("fb_gene_id","fb_symbol","poised_opening","poised_constant","poised_closing","poised_regulated","nonpoised_regulated")
+opening<-supp.dfs[supp.dfs$poised_opening==1,c("fb_gene_id")]
+constant<-supp.dfs[supp.dfs$poised_constant==1,c("fb_gene_id")]
+
+pre.nuc.cov <- get_load("/n/projects/jjj/rdata/predicted_nucleosomes/dm3.nucleosome.RData")[valid.chrs]
+
+
+
+
+promoter.gr <- with(fb_txs, GRanges(ranges     = IRanges(start=start, end=end), 
+                               seqnames   = chr,
+                               strand     = ifelse(strand == 1, "+", "-"),
+                               fb_gene_id = fb_gene_id,
+                               fb_tx_id   = fb_tx_id))
+promoter.gr
+
+promoter.gr <- resize(promoter.gr, width=100, fix="start")
+promoter.gr <- resize(promoter.gr, width=600, fix="end")
+
+ promoter.gr$class<-'others'
+ promoter.gr$class[promoter.gr$fb_gene_id %in% constant]<-'early_opening_set'
+ promoter.gr$class[promoter.gr$fb_gene_id %in% opening]<-'late_opening_set'
+
+lola_g_match<-vmatchPattern(pattern="AAAGCT",subject=Dmelanogaster,max.mismatch=0)
+gaga_g_match<-vmatchPattern(pattern="GAGAG",subject=Dmelanogaster,max.mismatch=0)
+
+mcols(promoter.gr)$lola_motif<-'absent'
+mcols(promoter.gr)$lola_motif[as.data.frame(findOverlaps(lola_g_match,promoter.gr))$subjectHits]<-'present'
+mcols(promoter.gr)$lola_motif_no<- countOverlaps(promoter.gr,lola_g_match)
+
+
+mcols(promoter.gr)$gaga_motif<-'absent'
+mcols(promoter.gr)$gaga_motif[as.data.frame(findOverlaps(gaga_g_match,promoter.gr))$subjectHits]<-'present'
+mcols(promoter.gr)$gaga_motif_no<- countOverlaps(promoter.gr,gaga_g_match)
+
+crol.gr<- import("/n/projects/vir/other_motifs/crol_motif.bed")
+l3neo38.gr<-import("/n/projects/vir/other_motifs/l3neo38_motif.bed")
+
+mcols(promoter.gr)$crol_motif<-'absent'
+mcols(promoter.gr)$crol_motif[as.data.frame(findOverlaps(crol.gr,promoter.gr))$subjectHits]<-'present'
+mcols(promoter.gr)$crol_motif_no<- countOverlaps(promoter.gr,crol.gr)
+
+mcols(promoter.gr)$l3neo38_motif<-'absent'
+mcols(promoter.gr)$l3neo38_motif[as.data.frame(findOverlaps(l3neo38.gr,promoter.gr))$subjectHits]<-'present'
+mcols(promoter.gr)$l3neo38_motif_no<- countOverlaps(promoter.gr,l3neo38.gr)
+
+
+values(promoter.gr)$pre_nuc  <- regionSums(resize(promoter.gr,width=200,fix='end'), pre.nuc.cov)
+
+promoter.dfs<-as.data.frame(promoter.gr)
+
+ddply(promoter.dfs,.(class),summarize,crol=sum(crol_motif=="present")/length(crol_motif),l3neo38=sum(l3neo38_motif=="present")/length(l3neo38_motif),both=sum(crol_motif=='present' & l3neo38_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+ddply(promoter.dfs,.(class),summarize,crol=sum(crol_motif=="present")/length(crol_motif),lola=sum(lola_motif=="present")/length(l3neo38_motif),both=sum(crol_motif=='present' & lola_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+ddply(promoter.dfs,.(class),summarize,crol=sum(crol_motif=="present")/length(crol_motif),gaga=sum(gaga_motif=="present")/length(l3neo38_motif),both=sum(crol_motif=='present' & gaga_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+ddply(promoter.dfs,.(class),summarize,l3neo38=sum(l3neo38_motif=="present")/length(crol_motif),lola=sum(lola_motif=="present")/length(l3neo38_motif),both=sum(l3neo38_motif=='present' & lola_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+ddply(promoter.dfs,.(class),summarize,l3neo38=sum(l3neo38_motif=="present")/length(crol_motif),gaga=sum(gaga_motif=="present")/length(l3neo38_motif),both=sum(l3neo38_motif=='present' & gaga_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+ddply(promoter.dfs,.(class),summarize,lola=sum(lola_motif=="present")/length(crol_motif),gaga=sum(gaga_motif=="present")/length(l3neo38_motif),both=sum(lola_motif=='present' & gaga_motif=='present')/length(l3neo38_motif),no=length(l3neo38_motif))
+
+````
+
+``` {r opening_classVsnuclesome_prediction,dev=c('png','pdf'), fig.width=18, fig.height=16}
+
+ ggplot(promoter.dfs,aes(class,pre_nuc))+geom_boxplot(notch=TRUE)+theme_bw()+labs(y="Nucleosome_prediction")
+````
+## Session information
+
+For reproducibility, this analysis was performed with the following R/Bioconductor session:
+
+``` {r session_info, echo=FALSE}
+sessionInfo()
+````

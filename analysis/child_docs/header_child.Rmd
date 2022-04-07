@@ -1,0 +1,5 @@
+**Project:** `r getOption("knitr.project_name")`
+
+**Author:** [Vivek](mailto:vir@stowers.org)
+
+**Generated:** `r format(Sys.time(), "%a %b %d %Y, %I:%M %p")`

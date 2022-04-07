@@ -1,0 +1,4 @@
+label,factor,window_upstream,window_downstream,ip,wce,normalization,replicate,minimum_value,max_quantile,color
+wt_2-4h,Mnase,100,100,../bw/Dme_MNase_2-4h_1.bam_from100to200_rpm.bw,NA,FALSE,1,0,0.85,"""#391B0E"""
+wt_14-17h,Mnase,100,100,../bw/Dme_MNase_14-17h_1.bam_from100to200_rpm.bw,NA,FALSE,1,0,0.85,"""#391B0E"""
+wt_14-17h,Mnase,100,100,../bw/Dme_MNase_14-17h_2.bam_from100to200_rpm.bw,NA,FALSE,2,0,0.85,"""#391B0E"""

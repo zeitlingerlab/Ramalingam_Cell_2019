@@ -1,0 +1,6 @@
+# Find lola-I peaks at 14-17 hrs peaks through macs2
+
+
+macs2 callpeak -g dm --keep-dup all -n lola_i_peaks_1 -t /lola_paper/aws/bam/chipseq/Dme_emb_14-17h_Lola_I_1.bam -c /lola_paper/aws/bam/chipseq/Dme_emb_14-17h_WCE_1.bam -p 1e-5
+
+macs2 callpeak -g dm --keep-dup all -n lola_i_peaks_2 -t /lola_paper/aws/bam/chipseq/Dme_emb_14-17h_Lola_I_2.bam -c /lola_paper/aws/bam/chipseq/Dme_emb_14-17h_WCE_2.bam -p 1e-5

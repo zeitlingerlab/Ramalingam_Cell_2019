@@ -1,0 +1,113 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(rtracklayer)
+library(magrittr)
+library(dplyr)
+library(Gviz)
+library(parallel)
+cores_to_use=8
+# Output folder for this document
+options(knitr.figure_dir = "figure1g_single_region_examples_polII_data_mut")
+
+source("shared/granges_common.r")
+source("shared/knitr_common.r")
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe %>% select(-strand,-start,-end,-seqnames)))}
+
+
+build_track<-function(bw_file,bw.dfs,region.gr){
+          bw.dfs %>% filter(bw==bw_file) -> temp
+  factor<- temp$factor;
+  condition <- temp$condition;
+  ylimit<-temp$ylimit;
+  track_color<-temp$color;
+  plot_type = temp$plot_type
+    data_track<-DataTrack(range=bw_file,
+					                         genome="dm6", name=paste0(factor," ",condition), 
+					                         type=plot_type,chr=seqnames(region.gr) %>% as.character,
+					                         col=track_color,ylim=c(0,ylimit),
+					                         fill.mountain=c(track_color,track_color),background.title = "transparent", col.axis="black", col.line="black",col.title="black",fontcolor="black")
+}
+
+plot_gviz_tracks<-function(gene_id,regions.df,bw_files,motif_g_match,highlight = FALSE){
+
+regions.df %>% filter(fb_gene_id==gene_id) %>% as.data.frame %>% GRangesFromDataFrames -> region.gr
+
+#data_track
+bw_files$max_value <- bw_files$bw %>% lapply(regionMaxs,regions=region.gr) %>% unlist
+bw_files %<>% group_by(factor) %>% mutate(ylimit=max(max_value))
+data_tracks<-bw_files$bw %>% lapply(build_track,bw_files,region.gr)	
+
+
+
+
+  r_chr <- as.character(seqnames(region.gr))
+  r_start <- start(region.gr)
+  r_end   <- end(region.gr)
+
+#gene_track  
+  grtrack <- GeneRegionTrack(range=TxDb.Dmelanogaster.UCSC.dm6.ensGene,
+                             genome="dm6",
+                             chromosome=r_chr,
+                             name="Genes",
+                             showId=TRUE,
+                             geneSymbol=TRUE,
+                             fill="black", collapseTranscripts=FALSE,col="white",background.title = "transparent", col.axis="black", col.line="black",col.title="black",fontcolor="black")
+  
+#motif_track
+ motif.gr<-motif_g_match[subjectHits(findOverlaps(region.gr,motif_g_match))]
+  motif_track <- AnnotationTrack(range=motif.gr, strand=rep("*", length(motif.gr)),
+                                   genome="dm6", name="Lola_motif", showFeatureId=FALSE,
+                                  stacking="dense", fill="black",col="white",background.title = "transparent", col.axis="black", col.line="black",col.title="black",fontcolor="black")
+  
+
+#axis_track    
+axisTrack <- GenomeAxisTrack()  
+
+#highlight_track
+if(highlight == TRUE){
+ht <- HighlightTrack(trackList=list(motif_track), start=regions.df$h_start, end = regions.df$h_end, chromosome=r_chr)
+
+#plot
+  plotTracks(c(data_tracks,motif_track,grtrack,axisTrack,ht),from=start(region.gr),to=end(region.gr), reverseStrand=ifelse(strand(region.gr)=='-',TRUE,FALSE), main=region.gr$fb_gene_symbol,scale = 0.2,labelPos="below",transcriptAnnotation = "symbol", shape = "box",stacking="squish")
+} else {
+  
+  plotTracks(c(data_tracks,motif_track,grtrack,axisTrack),from=start(region.gr),to=end(region.gr), reverseStrand=ifelse(strand(region.gr)=='-',TRUE,FALSE), main=region.gr$fb_gene_symbol,scale = 0.2,labelPos="below",transcriptAnnotation = "symbol", shape = "box",stacking="squish")
+  
+}
+}
+
+
+```
+
+# Single region examples in Lola_mut
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+``` {r bigwigs, dev=c("png","pdf"),fig.width=12,fig.height=12}
+
+
+bw_files<-read.table("data/figure1g_single_region_examples_polII_data_mut.csv",header=TRUE,sep=",")
+
+regions.df<-read.table("data/figure1g_single_region_examples_polII_regions_mut.csv",header=TRUE,sep=",")
+regions.df
+
+bw_files$bw %<>% as.character
+bw_files$color %<>% as.character
+bw_files$plot_type %<>% as.character
+bw_files$color<-gsub('\"',"",bw_files$color,fixed=T)
+
+lola_g_match<-vmatchPattern(pattern="AAAGCT",subject=Dmelanogaster,max.mismatch=0)
+motif_g_match <- lola_g_match;
+
+regions.df$fb_gene_id %>% lapply(plot_gviz_tracks,regions.df,bw_files,motif_g_match,highlight=FALSE)
+
+
+
+```
+
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```
