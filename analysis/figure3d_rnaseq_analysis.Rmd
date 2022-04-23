@@ -106,11 +106,14 @@ rnaseq$group<-'others'
 rnaseq$group[rnaseq$fb_gene_id %in% lola_genes]<-'lola_genes'
 rnaseq$group[rnaseq$fb_gene_id %in% control_genes]<-'control'
 ggplot(rnaseq,aes(group,log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-2.5,2))+theme_cowplot()
+rnaseq %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
 
 rnaseq2$group<-'others'
 rnaseq2$group[rnaseq2$fb_gene_id %in% lola_genes]<-'lola_genes'
 rnaseq2$group[rnaseq2$fb_gene_id %in% control_genes]<-'control'
 ggplot(rnaseq2,aes(group,log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-3,2))+theme_cowplot()
+rnaseq2 %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
+
 
 ```
   

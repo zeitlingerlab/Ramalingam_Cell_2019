@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 ``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
 library(ggplot2)
 library(dplyr)
@@ -12,6 +17,7 @@ source("shared/granges_common.r")
 source("shared/flybase.r")
 cores_to_use<-8;
 path_to_data_1 <- "../bw"
+path_to_data_2 <- "../bw"
 
 
 
@@ -131,8 +137,8 @@ Before calculating enrichment, we floor the WCE signal for each region at the me
 
 enrichments.df <- data.df %>% filter(!is.na(region_wce))
 enrichments.df <- enrichments.df %>% 
-                      group_by(label, factor) %>%
-                      mutate(median_region_wce = median(region_wce), calculation = 'enrichment')
+                      dplyr::group_by(label, factor) %>%
+                      dplyr::mutate(median_region_wce = median(region_wce), calculation = 'enrichment')
 
 enrichments.df %<>% transform(enrichment = (region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total))
 
@@ -151,7 +157,7 @@ signals.df %<>% transform(enrichment = (region_ip / ip_total) )
 
 enrichments.df<- rbind(enrichments.df %>% dplyr::select(-median_region_wce),signals.df)
 
-enrichments.df %<>% group_by(fb_tx_id,factor,label) %>% summarize(fb_gene_id = fb_gene_id[1], fb_symbol = fb_symbol[1], calculation = calculation[1], enrichment = mean(enrichment), minimum_value = minimum_value[1], max_quantile = max_quantile[1],color=color[1]) 
+enrichments.df %<>% dplyr::group_by(fb_tx_id,factor,label) %>% dplyr::summarize(fb_gene_id = fb_gene_id[1], fb_symbol = fb_symbol[1], calculation = calculation[1], enrichment = mean(enrichment), minimum_value = minimum_value[1], max_quantile = max_quantile[1],color=color[1]) 
 ```
 
 ## Save results
@@ -170,11 +176,11 @@ enrichments.df %>% saveRDS(file=figure_path("enrichments.df.rds"))
 
 ```{r enrichments}
 
-enrichments.df %<>% group_by(factor,label) %>% mutate(enrichment = ifelse(enrichment<minimum_value,0,enrichment)) 
+enrichments.df %<>% dplyr::group_by(factor,label) %>% dplyr::mutate(enrichment = ifelse(enrichment<minimum_value,0,enrichment)) 
 
 enrichments.df %<>% filter(fb_tx_id %in% (comparisson_groups.lst$all_promoters.df)$fb_tx_id ) 
 
-enrichments.df %<>% group_by(label, factor) %>%
+enrichments.df %<>% dplyr::group_by(label, factor) %>%
             dplyr::mutate(normalized_enrichment = pmax(0, pmin(1, enrichment / quantile(enrichment, max_quantile))))
 
 		
@@ -189,7 +195,7 @@ saveRDS(enrichments.df, file=figure_path("normalized_enrichments.df.rds"))
 build_heatmap_plot <- function(i,groups,enrichments.df) {
   
   enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
-			select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			dplyr::select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
 			spread(key= label, value = normalized_enrichment)   -> values.df
   
   heatmap.df <- groups %>%
@@ -217,19 +223,21 @@ build_heatmap_plot <- function(i,groups,enrichments.df) {
              panel.grid.minor=element_blank(),
              axis.text.x=element_text(angle=45, vjust=1, hjust=1))
   
-  g
-  heatmap.df
+  list(g,heatmap.df)
 }
 
 groups <- readRDS("figure1e_lola_targets_heatmap/groups.rds")
 
 heatmap_all   <- enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,enrichments.df)
 
-heatmap_all[[1]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
-heatmap_all[[1]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[1]][[1]]
+heatmap_all[[2]][[1]]
 
-heatmap_all[[2]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
-heatmap_all[[2]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[1]][[2]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[1]][[2]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+
+heatmap_all[[2]][[2]] %>% filter(group_name == 'lola_promoters') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
+heatmap_all[[2]][[2]] %>% filter(group_name == 'control') %>% {pairwise.wilcox.test(.$enrichment,.$time)}
  
 
 ```

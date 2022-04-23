@@ -38,9 +38,9 @@ comparisson_groups.lst <-readRDS("figure1b_enrichments/comparisson_groups.lst.rd
 
 txs.gr<-flybase_txs_granges()
 
-late.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$late.df)$fb_tx_id] %>% resize(fix="start",width=100) %>% resize(fix="end",width=300)
+late.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$late.df)$fb_tx_id] %>% resize(fix="start",width=1) %>% resize(fix="end",width=200)
 
-nochange.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$nochange.df)$fb_tx_id] %>% resize(fix="start",width=100) %>% resize(fix="end",width=300)
+nochange.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$nochange.df)$fb_tx_id] %>% resize(fix="start",width=1) %>% resize(fix="end",width=200)
 
 
 ````
@@ -53,9 +53,9 @@ fimo.gr <- updateObject(readRDS("../external_data/fimo/dm6.matches.granges.rds")
 
 ```{r motif_enrichments}
 
-late_nochange.df<-significant_motifs(late.gr,nochange.gr,fimo.gr,cutoff=0.01)
+late_nochange.df<-significant_motifs(late.gr,nochange.gr,fimo.gr,cutoff=0.05)
 late_nochange.df
-
+write.table(late_nochange.df, file=figure_path("late_vs_nochange_motif_enrichments.xls"), sep="\t", row.names=F, col.names=T, quote=F)
 
 ```
 

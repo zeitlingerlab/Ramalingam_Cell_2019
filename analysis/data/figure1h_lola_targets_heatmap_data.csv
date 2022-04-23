@@ -13,5 +13,3 @@ mut,ATAC,150,150,dme_emb_28267_14_17h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,1,0,
 mut,ATAC,150,150,dme_emb_28267_14_17h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""
 rescue,ATAC,150,150,dme_emb_act_lola_PI_28267_14_17h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,1,0,0.85,"""#6C1E10"""
 rescue,ATAC,150,150,dme_emb_act_lola_PI_28267_14_17h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,2,0,0.85,"""#6C1E10"""
-rescue,ATAC,150,150,dme_emb_act_lola_PI_28267_14_17h_atac_1.bam_from0to100_rpm.bw,NA,FALSE,3,0,0.85,"""#6C1E10"""
-rescue,ATAC,150,150,dme_emb_act_lola_PI_28267_14_17h_atac_2.bam_from0to100_rpm.bw,NA,FALSE,4,0,0.85,"""#6C1E10"""
