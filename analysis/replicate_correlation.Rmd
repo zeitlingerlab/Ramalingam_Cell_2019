@@ -1,0 +1,112 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+# Output folder for this document
+options(knitr.figure_dir = "replicate_correlations")
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/flybase.r")
+cores_to_use<-12;
+path_to_data_1 <- "../bw"
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+```
+
+# Calculating correlations at all promoters
+
+``` {r header_child, child="child_docs/header_child.Rmd"}
+```
+
+
+## Samples overview
+
+We will calculate the pol II enrichments for the following samples
+``` {r samples_table}
+samples <- list.files("../bw/",pattern = glob2rx("*rpm.bw"))
+
+```
+## load the samples
+
+```{r}
+locate_bigwig <- function(name) {
+    path1 <- file.path(path_to_data_1, name)
+    if(file.exists(path1)) return(path1)
+  path2 <- file.path(path_to_data_2, name)
+  if(file.exists(path2)) return(path2)
+  stop("Cannot find bigwig: ", name)
+}
+
+signals_for_sample <- function(i, samples, txs.gr) {
+  message(i);
+      sample.bw <- locate_bigwig(samples[i])
+      
+      region_signal  <- regionSums(txs.gr, sample.bw)
+      data.frame('region_signal' = region_signal,'sample_name'=samples[i],tx_id = txs.gr$fb_tx_id)
+      } 
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs
+txs.gr %<>% resize(fix='start',width=100) %>% resize(fix='end',width=200)
+
+data.df <- 1:length(samples) %>%
+               mclapply(signals_for_sample, samples, txs.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>%
+               lapply(as.data.frame) %>%
+               bind_rows 
+
+```
+
+````{r rna_changes}
+data.df %>% pivot_wider(values_from = 'region_signal', names_from = 'sample_name') -> data_df_wide
+cor(as.matrix(data_df_wide[,-1])) %>% as.data.frame() %>% write.csv(figure_path("correlations.csv"))
+```
+```{r rnaseq_correlations}
+
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(Gviz)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(tximport)
+library(DESeq2)
+library(magrittr)
+library(pander)
+library(rhdf5)
+
+
+source("shared/knitr_common.r")
+source("shared/granges_common.r")
+source("shared/metapeaks.r")
+
+source("shared/promoter_element_enrichments.r")
+panderOptions('knitr.auto.asis', TRUE)
+
+source("shared/flybase.r")
+source("shared/gostats.r")
+
+cores <- function() { return(16) }
+
+
+library(cowplot)
+
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+
+
+files <- file.path("../fastq/rnaseq/kallisto/", list.files("../fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("../fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORC4_14to17h_1","ORC4_14to17h_2","ORC4_14to17h_3","ORC4_14to17h_4","wt_14to17h_1","wt_14to17h_2","wt_14to17h_3")]}
+
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+cor(txi$abundance) %>% as.data.frame() %>% write.csv(figure_path("rnaseq_correlations.csv"))
+```
+
+``` {r session_info_child, child="child_docs/session_info_child.Rmd"}
+```

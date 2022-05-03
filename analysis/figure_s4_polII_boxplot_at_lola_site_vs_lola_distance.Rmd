@@ -112,13 +112,14 @@ enrichments_for_sample <- function(i, samples.df, gr, window=500) {
 
 lola_peaks.gr<-get_lola_peaks(location=c("promoter","distal"),number=1000)
 
-lola_peaks.gr %<>% resize(fix='center',width=100)
+lola_peaks.gr %<>% resize(fix='center',width=200)
 
 lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
 
 mcols(lola_peaks.gr)$lola_motif<-countOverlaps(lola_peaks.gr,lola_g_match,ignore.strand=TRUE)
 lola_peaks.gr<-lola_peaks.gr[lola_peaks.gr$lola_motif>=1]
 
+lola_peaks.gr %>% as.data.frame() %>% write.csv(figure_path("promoter_distal_targets.csv"))
 
 data.df <- 1:nrow(samples.df) %>%
                mclapply(enrichments_for_sample, samples.df, lola_peaks.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>% lapply(as.data.frame) %>%

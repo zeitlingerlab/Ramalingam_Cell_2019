@@ -32,7 +32,8 @@ data$condition %<>% factor(.,levels=c("WT","Mut"))
 ```{r plot,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
 
 ggplot(data, aes(timepoint,cells, fill=factor)) + facet_wrap(~condition)+
-  stat_summary(geom = "bar", fun.y = "mean", position = "dodge") +
+  geom_point(aes(color=factor),position = position_jitterdodge(jitter.width = 0.05, jitter.height = 0))+
+  stat_summary(geom = "bar", fun.y = "mean", position = "dodge",alpha=0.4) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", position = "dodge",size=0.25) +
   theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))+
   scale_y_continuous(breaks = c(0,40))
@@ -46,13 +47,30 @@ data %<>% spread(factor, cells)
 data %<>% dplyr::mutate(ratio=Gip/`PPO1 PPO2`)
 
 ggplot(data, aes(timepoint,ratio,fill=condition)) + facet_wrap(~condition)+
-  stat_summary(geom = "bar", fun.y = "mean", position = "dodge") +
+  geom_point(aes(color=condition),position = position_jitterdodge(jitter.width = 0.1, jitter.height = 0))+
+  stat_summary(geom = "bar", fun.y = "mean", position = "dodge",alpha=0.4) +
   stat_summary(geom = "errorbar", fun.data = "mean_se", position = "dodge",size=0.25) +
   theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
 
 ggplot(data, aes(timepoint,ratio,fill=condition)) + facet_wrap(~condition)+
   geom_boxplot(outlier.color = NA)+ geom_jitter()+
   theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
+````
+
+```{r nascent_file}
+
+data<- read.csv("data/nascent_perscent_workbook.csv",sep=",")
+data$condition %<>% factor(.,levels=c("wt","mutant"))
+data
+````
+```{r plot_3,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+ggplot(data, aes(condition,percent_visible_nascents,fill=condition)) + 
+  geom_point(aes(color=condition),position = position_jitterdodge(jitter.width = 0.4, jitter.height = 0))+
+  stat_summary(geom = "bar", fun.y = "mean", position = "dodge",alpha=0.4) +
+  stat_summary(geom = "errorbar", fun.data = "mean_se", position = "dodge",size=0.25) +
+  theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
+
 ````
 
 ``` {r session_info, echo=FALSE}

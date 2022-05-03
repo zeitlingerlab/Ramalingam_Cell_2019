@@ -89,6 +89,9 @@ wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,l
 
 wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
 
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+
 ```
 
 ```{r control_genes}
@@ -129,6 +132,9 @@ wide_m.df %<>% dplyr:: mutate(exp_diff_ht=wt_expression.in.ht-mut_expression.in.
 wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_ng.freq.in.ht","mut_ng.freq.in.ht","wt_ng.freq.in.ot","mut_ng.freq.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
 
 wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
 
 ```
 ```{r filtered_lola_promoters_set}
@@ -177,6 +183,9 @@ wide_m.df %<>% dplyr:: mutate(exp_diff_ht=wt_expression.in.ht-mut_expression.in.
 wide_m.df[6:9] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_ng.freq.in.ht","mut_ng.freq.in.ht","wt_ng.freq.in.ot","mut_ng.freq.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
 
 wide_m.df[2:5] %>% gather(variable,value) %>% {.$variable <- factor(.$variable,levels=c("wt_expression.in.ht","mut_expression.in.ht","wt_expression.in.ot","mut_expression.in.ot"));.} %>% ggplot(aes(variable,value))+geom_boxplot()+theme_cowplot()
+
+wide_m.df[6:9] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
+wide_m.df[2:5] %>% gather(variable,value) %>% {pairwise.wilcox.test(.$value,.$variable)}
 
 ```
 
