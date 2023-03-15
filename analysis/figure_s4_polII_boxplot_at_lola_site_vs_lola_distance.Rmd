@@ -117,6 +117,9 @@ lola_peaks.gr %<>% resize(fix='center',width=200)
 lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
 
 mcols(lola_peaks.gr)$lola_motif<-countOverlaps(lola_peaks.gr,lola_g_match,ignore.strand=TRUE)
+
+lola_peaks.gr
+
 lola_peaks.gr<-lola_peaks.gr[lola_peaks.gr$lola_motif>=1]
 
 lola_peaks.gr %>% as.data.frame() %>% write.csv(figure_path("promoter_distal_targets.csv"))

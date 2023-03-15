@@ -1,0 +1,102 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(ggplot2)
+library(plyr)
+library(doMC)
+library(dplyr)
+library(magrittr)
+library(Hmisc)
+library(cowplot)
+library(tidyr)
+
+registerDoMC(cores=10)
+
+# Output folder for this document
+options(knitr.figure_dir = "figure4_mnase_metagene_promoter_distal_boxplot")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/metagene_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+}
+
+
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch,fixed=FALSE)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+```
+
+
+Look at the pol II profile at Lola target genes
+
+### Lola targets are defined by Lola binding- top 1000 peaks
+```{r header_child, child="../child_docs/header_child.Rmd"}
+```
+
+```{r files}
+
+mnase_2_4.cov<-import("../../bw/Dme_MNase_2-4h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}
+mnase_14_17.cov<- ((import("../../bw/Dme_MNase_14-17h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../../bw/Dme_MNase_14-17h_2.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}))/2
+mnase_mut_14_17.cov<- ((import("../../bw/Dme_MNase_orc4_14-17h_1.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../../bw/Dme_MNase_orc4_14-17h_2.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../../bw/Dme_MNase_orc4_14-17h_1rr.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)})+(import("../../bw/Dme_MNase_orc4_14-17h_2rr.bam_from100to200_rpm.bw") %>% {coverage(.,weight=.$score)}))/4
+
+mnase_lst<-list(mnase_2_4=mnase_2_4.cov,mnase_14_17=mnase_14_17.cov,mnase_mut_14_17=mnase_mut_14_17.cov)
+
+````
+
+
+```{r regions,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+lola_peaks.gr<-get_lola_peaks(c("promoter","distal"),750) %>% resize(fix='center',width=200) %>% filter_for_motif(motif="AAAGCTY")
+
+```
+```{r calculate_values,dev=c('png', 'pdf'),fig.width=12,fig.height=12}
+
+lola_peaks.gr$mnase_wt_2_4h<-regionSums(lola_peaks.gr, mnase_2_4.cov)
+lola_peaks.gr$mnase_wt_14_17h<-regionSums(lola_peaks.gr, mnase_14_17.cov)
+lola_peaks.gr$mnase_mut_14_17h<-regionSums(lola_peaks.gr, mnase_mut_14_17.cov)
+
+lola_peaks.gr %>% as.data.frame %>% gather(condition,signal,-1:-13) -> plot.df
+
+ggplot(plot.df,aes(condition,signal))+geom_boxplot()+facet_grid(location~.)+theme_cowplot() + theme(axis.text.x = element_text(angle = 45,hjust=1))
+
+lola_peaks.gr %>% as.data.frame %>% gather(condition,signal,-1:-13) %>% filter(location=='promoter') %>% {pairwise.wilcox.test(.$signal,.$condition)}
+
+lola_peaks.gr %>% as.data.frame %>% gather(condition,signal,-1:-13) %>% filter(location=='distal') %>% {pairwise.wilcox.test(.$signal,.$condition)}
+```
+
+``` {r session_info_child, child="../child_docs/session_info_child.Rmd"}
+```

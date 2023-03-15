@@ -1,0 +1,170 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+
+library(magrittr)
+library(matrixStats)
+library(gtools)
+
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(dplyr)
+library(tidyr)
+library(doMC)
+library(Hmisc)
+
+# Output folder for this document
+options(knitr.figure_dir = "figure_s4_polII_boxplot_at_lola_site_vs_lola_distance")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/metagene_common.r")
+
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+cores_to_use<-32;
+path_to_data_1<-"../../bw";
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+
+}
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+```
+
+
+```{r header_child, child="../child_docs/header_child.Rmd"}
+```
+
+## Overview
+
+We will calculate the pol II enrichments for the following samples
+``` {r samples_table}
+samples.df <- read.csv("../data/figure_s4_polII_data.csv", stringsAsFactors=FALSE)
+samples.df %>% pander
+```
+
+## load the samples
+
+``` {r functions, include=TRUE}
+
+locate_bigwig <- function(name) {
+    path1 <- file.path(path_to_data_1, name)
+    if(file.exists(path1)) return(path1)
+  path2 <- file.path(path_to_data_2, name)
+  if(file.exists(path2)) return(path2)
+  stop("Cannot find bigwig: ", name)
+}
+
+enrichments_for_sample <- function(i, samples.df, gr, window=500) {
+  sample.bw <- locate_bigwig(samples.df$ip[i])
+  wce.bw    <- locate_bigwig(samples.df$wce[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  
+  regions.gr <- resize(gr, fix='center',width = window)
+
+  mcols(gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(gr)$region_wce <- regionSums(regions.gr, wce.bw)
+
+  mcols(gr)$ip_total <- total_signal(sample.bw)
+  mcols(gr)$wce_total <- total_signal(wce.bw)
+
+  mcols(gr)$region_wce_min_coverage <- regionMins(regions.gr, wce.bw)
+
+  mcols(gr)$label <- label
+  mcols(gr)$factor <- factor_type
+
+  gr
+}
+
+lola_peaks.gr<-get_lola_peaks(location=c("promoter","distal"),number=750)
+
+lola_peaks.gr %<>% resize(fix='center',width=200)
+
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+mcols(lola_peaks.gr)$lola_motif<-countOverlaps(lola_peaks.gr,lola_g_match,ignore.strand=TRUE)
+
+lola_peaks.gr
+
+lola_peaks.gr<-lola_peaks.gr[lola_peaks.gr$lola_motif>=1]
+
+lola_peaks.gr
+
+lola_peaks.gr %>% as.data.frame() %>% write.csv(figure_path("promoter_distal_targets.csv"))
+
+data.df <- 1:nrow(samples.df) %>%
+               mclapply(enrichments_for_sample, samples.df, lola_peaks.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>% lapply(as.data.frame) %>%
+               bind_rows() 
+data.df %>% head
+
+enrichments.df <- data.df %>% 
+                    group_by(label, factor) %>%
+                    mutate(median_region_wce = median(region_wce))
+
+enrichments.df %<>% transform(enrichment = (region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total))
+
+tss.infs <- which(is.infinite(enrichments.df$enrichment))
+
+min.tss <- with(enrichments.df, min(enrichment[is.finite(enrichment)]))
+
+if(length(tss.infs) > 0) enrichments.df$enrichment[tss.infs] <- min.tss
+
+enrichments.df %<>%
+  ungroup %>%
+  dplyr::select(nearest_gene_id, distance_to_tss, name, score, inside_gene, location, lola_motif, enrichment, label, factor)
+  
+
+enrichments.df %<>% spread(key=label, value=enrichment)	%>%
+	 mutate(early=rowMeans(cbind(early_1,early_2)),late=rowMeans(cbind(late_1,late_2,late_3))) %>%
+	  dplyr::select(-early_1,-early_2,-late_1,-late_2,-late_3)
+
+```
+## Poll II changes based on distance bewtween lola binding site to TSS
+
+```{r plots, fig.width=14, fig.height=10}
+
+ggplot(enrichments.df, aes(x=log10(distance_to_tss),y=late)) +	geom_point()
+ggplot(enrichments.df, aes(x=log10(distance_to_tss),color=location,y=late)) +	geom_point()
+ggplot(enrichments.df, aes(x=location,y=late)) +	geom_boxplot()
+
+enrichments.df  %>% {pairwise.wilcox.test(.$late,.$location)}
+
+```
+
+
+``` {r session_info_child, child="../child_docs/session_info_child.Rmd"}
+```

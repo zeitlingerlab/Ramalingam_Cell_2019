@@ -1,0 +1,182 @@
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(Gviz)
+library(TxDb.Dmelanogaster.UCSC.dm6.ensGene)
+library(tximport)
+library(DESeq2)
+library(magrittr)
+library(pander)
+library(rhdf5)
+
+# Output folder for this document
+options(knitr.figure_dir = "promoter_distal_rnaseq_analysis")
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/metapeaks.r")
+
+source("/lola_paper/aws/analysis/shared/promoter_element_enrichments.r")
+panderOptions('knitr.auto.asis', TRUE)
+
+source("/lola_paper/aws/analysis/shared/flybase.r")
+source("/lola_paper/aws/analysis/shared/gostats.r")
+
+cores <- function() { return(16) }
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+library(cowplot)
+```
+
+
+```{r header_child, child="/lola_paper/aws/analysis/child_docs/header_child.Rmd"}
+```
+
+## Overview
+
+Whole-embryo wild-type 14-17h and orc4 or orc4/ore50 mutants were processed with `kallisto` and compared with `DESeq2  at Lola promoter targets and distal targets
+
+Lola and control gene definitions are from figure 1e
+
+
+```{r calculate_differential_expression_in_wt_vs_orc4}
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+
+
+files <- file.path("/lola_paper/aws//fastq/rnaseq/kallisto/", list.files("/lola_paper/aws//fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("/lola_paper/aws//fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORC4_14to17h_1","ORC4_14to17h_2","ORC4_14to17h_3","ORC4_14to17h_4","wt_14to17h_1","wt_14to17h_2","wt_14to17h_3")]}
+
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+
+sampleTable <- data.frame(condition = factor(rep(c("orc4_14to17h","wt_14to17h"), c(4,3))))
+rownames(sampleTable) <- colnames(txi$counts)
+print(sampleTable)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+
+
+rnaseq <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_1+wt_14to17h_2+wt_14to17h_3)/3, orc4_14to17h = (ORC4_14to17h_1+ORC4_14to17h_2+ORC4_14to17h_3)/3) %>% dplyr::select(fb_gene_id,wt_14to17h,orc4_14to17h) ->TPM
+
+rnaseq %<>% merge(TPM)
+
+```
+
+
+```{r calculate_differential_expression_in_wt_vs_orc4,or50}
+
+all_fb_genes <- flybase_txs_granges()$fb_gene_id %>% unique
+files <- file.path("/lola_paper/aws//fastq/rnaseq/kallisto/", list.files("/lola_paper/aws//fastq/rnaseq/kallisto/"), "abundance.h5")
+names(files) <- list.files("/lola_paper/aws//fastq/rnaseq/kallisto/")
+files %<>% {.[names(.)%in% c("ORE50_ORC4_14to17h_1","ORE50_ORC4_14to17h_2","ORE50_ORC4_14to17h_3","ORE50_ORC4_14to17h_4","wt_14to17h_5","wt_14to17h_6")]}
+
+txi <- tximport(files, type = "kallisto", txOut = TRUE)
+
+sampleTable <- data.frame(condition = factor(rep(c("ore50_orc4_14to17h","wt_14to17h"), c(4,2))))
+rownames(sampleTable) <- colnames(txi$counts)
+print(sampleTable)
+dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
+
+dds<-DESeq(dds)
+
+rnaseq2 <- results(dds,alpha = 0.01) %>% as.data.frame %>% mutate(fb_gene_id = row.names(.))
+
+txi$abundance %>% as.data.frame %>% mutate(fb_gene_id = row.names(.), wt_14to17h = (wt_14to17h_5+wt_14to17h_6)/2, ore50_orc4_14to17h = (ORE50_ORC4_14to17h_1+ORE50_ORC4_14to17h_2+ORE50_ORC4_14to17h_3+ORE50_ORC4_14to17h_4)/4) %>% dplyr::select(fb_gene_id,wt_14to17h,ore50_orc4_14to17h) ->TPM
+
+rnaseq2 %>% merge(TPM) -> rnaseq2
+
+```
+
+
+
+```{r plot_changes_in_groups, dev=c('png','pdf'), fig.cap="all_samples_correlation", fig.width=18, fig.height=16}
+
+txs.gr<-flybase_txs_granges()
+lola_genes<-txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% (readRDS("/lola_paper/aws/analysis/figure1e_lola_targets_heatmap/groups.rds")$lola_promoter)]
+
+control_genes<-txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% (readRDS("/lola_paper/aws/analysis/figure1e_lola_targets_heatmap/groups.rds")$control)]
+
+rnaseq$group<-'others'
+rnaseq$group[rnaseq$fb_gene_id %in% lola_genes]<-'lola_genes'
+rnaseq$group[rnaseq$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq,aes(group,-1*log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-2.5,2))+theme_cowplot()
+rnaseq %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
+
+rnaseq2$group<-'others'
+rnaseq2$group[rnaseq2$fb_gene_id %in% lola_genes]<-'lola_genes'
+rnaseq2$group[rnaseq2$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq2,aes(group,-1*log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-3,2))+theme_cowplot()
+rnaseq2 %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("/lola_paper/aws//bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("/lola_paper/aws//bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+}
+
+
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch,fixed=FALSE)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+
+lola_peaks.gr<-get_lola_peaks(c("promoter","distal"),1000) %>% resize(fix='center',width=200) %>% filter_for_motif(motif="AAAGCTY")
+
+rnaseq$group<-'others'
+lola_promoters <- {lola_peaks.gr %>% as.data.frame %>% filter(location=='promoter') %>% .$nearest_gene_id}
+lola_distal <- {lola_peaks.gr %>% as.data.frame %>% filter(location=='distal') %>% .$nearest_gene_id}
+
+rnaseq$group[rnaseq$fb_gene_id %in% {lola_promoters[! lola_promoters %in% lola_distal]}]<-'lola_promoter_genes'
+
+rnaseq$group[rnaseq$fb_gene_id %in% {lola_distal[! lola_distal %in% lola_promoters]}]<-'lola_distal_genes'
+rnaseq$group[rnaseq$fb_gene_id %in% {intersect(lola_distal,lola_promoters)}]<-'lola_promoter_distal_genes'
+
+rnaseq$group[rnaseq$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq,aes(group,-1*log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-2.5,2))+theme_cowplot()
+rnaseq %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
+
+rnaseq2$group<-'others'
+lola_promoters <- {lola_peaks.gr %>% as.data.frame %>% filter(location=='promoter') %>% .$nearest_gene_id}
+lola_distal <- {lola_peaks.gr %>% as.data.frame %>% filter(location=='distal') %>% .$nearest_gene_id}
+
+rnaseq2$group[rnaseq2$fb_gene_id %in% {lola_promoters[! lola_promoters %in% lola_distal]}]<-'lola_promoter_genes'
+
+rnaseq2$group[rnaseq2$fb_gene_id %in% {lola_distal[! lola_distal %in% lola_promoters]}]<-'lola_distal_genes'
+rnaseq2$group[rnaseq2$fb_gene_id %in% {intersect(lola_distal,lola_promoters)}]<-'lola_promoter_distal_genes'
+
+rnaseq2$group[rnaseq2$fb_gene_id %in% control_genes]<-'control'
+ggplot(rnaseq2,aes(group,-1*log2FoldChange,fill=group))+geom_boxplot()+ylim(c(-2.5,2))+theme_cowplot()
+rnaseq2 %>% {pairwise.wilcox.test(.$log2FoldChange,.$group)}
+
+```
+  
+```{r session_info_child, child="/lola_paper/aws/analysis/child_docs/session_info_child.Rmd"}
+```

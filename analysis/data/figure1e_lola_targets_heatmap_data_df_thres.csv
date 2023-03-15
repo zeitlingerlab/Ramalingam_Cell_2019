@@ -1,0 +1,9 @@
+label,factor,window_upstream,window_downstream,ip,wce,normalization,replicate,minimum_value,max_quantile,color
+early,polii,0,200,Dme_emb_2-4h_Rpb3_1_rpm.bw,Dme_emb_2-4h_WCE_1_rpm.bw,TRUE,1,2,0.80,"""#3d5782"""
+early,polii,0,200,Dme_emb_2-4h_Rpb3_2_R2_rpm.bw,Dme_emb_2-4h_WCE_2_R2_rpm.bw,TRUE,2,2,0.80,"""#3d5782"""
+late,polii,0,200,Dme_emb_14-17h_Rpb3_1_rpm.bw,Dme_emb_14-17h_WCE_1_rpm.bw,TRUE,1,2,0.80,"""#3d5782"""
+late,polii,0,200,Dme_emb_14-17h_Rpb3_2_rpm.bw,Dme_emb_14-17h_WCE_2_rpm.bw,TRUE,2,2,0.80,"""#3d5782"""
+late,polii,0,200,Dme_emb_14-17h_Rpb3_3_rpm.bw,Dme_emb_14-17h_WCE_3_rpm.bw,TRUE,3,2,0.80,"""#3d5782"""
+early,DHS,150,150,stage05_rpm.bw,NA,FALSE,1,0,0.90,"""#59456B"""
+late,DHS,150,150,stage14_rpm.bw,NA,FALSE,1,0,0.90,"""#59456B"""
+late,Lola,150,150,Dme_emb_14-17h_Lola_I_1_rpm.bw,Dme_emb_14-17h_WCE_1_rpm.bw,TRUE,1,2,0.95,"""#0086B9"""

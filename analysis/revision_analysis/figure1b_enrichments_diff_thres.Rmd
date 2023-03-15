@@ -1,0 +1,282 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+library(xtable)
+library(ggplot2)
+library(parallel)
+library(reshape2)
+library(matrixStats)
+library(GOstats)
+library(org.Dm.eg.db)
+library(dplyr)
+# Output folder for this document
+options(knitr.figure_dir = "figure1b_enrichments_diff_thres")
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+source("/lola_paper/aws/analysis/shared/promoter_element_enrichments.r")
+cores_to_use<-32;
+path_to_data_1<-"/lola_paper/aws//bw";
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+```
+
+# Calculating Pol II enrichments
+
+``` {r header_child, child="/lola_paper/aws/analysis/child_docs/header_child.Rmd"}
+```
+
+## Samples overview
+
+We will calculate the pol II enrichments for the following samples
+``` {r samples_table}
+samples.df <- read.csv("/lola_paper/aws/analysis/data/figure1b_polII_data.csv", stringsAsFactors=FALSE)
+samples.df %>% pander
+```
+
+## load the samples
+
+``` {r functions, include=FALSE}
+
+locate_bigwig <- function(name) {
+    path1 <- file.path(path_to_data_1, name)
+    if(file.exists(path1)) return(path1)
+  path2 <- file.path(path_to_data_2, name)
+  if(file.exists(path2)) return(path2)
+  stop("Cannot find bigwig: ", name)
+}
+
+enrichments_for_sample <- function(i, samples.df, txs.gr) {
+  sample.bw <- locate_bigwig(samples.df$ip[i])
+  wce.bw    <- locate_bigwig(samples.df$wce[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  
+  regions.gr <- promoters(txs.gr, upstream=samples.df$window_upstream[i], downstream=samples.df$window_downstream[i])
+  
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(txs.gr)$region_wce <- regionSums(regions.gr, wce.bw)
+
+  mcols(txs.gr)$ip_total <- total_signal(sample.bw)
+  mcols(txs.gr)$wce_total <- total_signal(wce.bw)
+
+  mcols(txs.gr)$region_wce_min_coverage <- regionMins(regions.gr, wce.bw)
+
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+
+  txs.gr
+}
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs
+
+  data.df <- 1:nrow(samples.df) %>%
+                 mclapply(enrichments_for_sample, samples.df, txs.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+  data.df
+
+```
+
+## Calculate enrichments
+
+Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.
+
+``` {r calculate_enrichments, include=FALSE}
+
+enrichments.df <- data.df %>% 
+                      group_by(label, factor) %>%
+                      mutate(median_region_wce = median(region_wce))
+
+enrichments.df %<>% transform(enrichment = (region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total))
+
+tss.infs <- which(is.infinite(enrichments.df$enrichment))
+
+min.tss <- with(enrichments.df, min(enrichment[is.finite(enrichment)]))
+
+if(length(tss.infs) > 0) enrichments.df$enrichment[tss.infs] <- min.tss
+
+```
+
+## Save results
+
+``` {r save_results, include=FALSE}
+enrichments.df %<>%
+  ungroup %>%
+  dplyr::select(fb_tx_id, fb_gene_id, fb_symbol, enrichment, factor, label)
+  
+#filter for highest tx_id
+enrichments.df %<>% filter(fb_tx_id %in% (enrichments.df %>% group_by(fb_gene_id) %>% summarize(fb_tx_id = fb_tx_id[which.max(enrichment)]) %>% `$`(fb_tx_id)))
+
+enrichments.df %>% saveRDS(file=figure_path("enrichments.df.rds"))
+
+```
+
+#different groups
+
+``` {r load_data, include=FALSE}
+
+supp.df<-read.csv(file="../data/bjoern_groups.csv", header = TRUE, sep = ",");
+
+flybase_ids.df<-read.csv(file="../data/FlyBase_IDs.txt", header = TRUE, sep = "\t");
+
+flybase_ids.df %>% mutate(flybase_gene_id=submitted_id,fb_gene_id=converted_id) %>% merge(supp.df,.) ->supp.df
+
+supp.df<-supp.df[!supp.df$fb_gene_id %>% duplicated,]
+
+supp.df%<>% merge(enrichments.df %>% filter(label == "early_1") %>% dplyr::select(fb_gene_id,fb_tx_id))
+
+all_promoters.df = enrichments.df %>% filter(label == "early_1") %>% dplyr::select(fb_gene_id,fb_tx_id)
+
+supp.df %>% filter(Poised_constant_set==1) -> nochange.df
+		 
+supp.df %>% filter(Poised_opening_set==1)  -> late.df
+
+comparisson_groups.lst=list(all_promoters.df=all_promoters.df,late.df=late.df,nochange.df=nochange.df)				 
+saveRDS(comparisson_groups.lst, file=figure_path("comparisson_groups.lst.rds"))
+
+```
+
+## Normalize for heatmap
+
+```{r Normalize_data}
+
+promoter.df<-rbind(late.df,nochange.df)
+
+enrichments.df %<>% spread(key=label, value=enrichment)	%>%
+	 mutate(early=rowMeans(cbind(early_1,early_2)),late=rowMeans(cbind(late_1,late_2,late_3))) %>%
+	  dplyr::select(-early_1,-early_2,-late_1,-late_2,-late_3) %>%
+	   gather(label,enrichment,-1:-4)
+
+enrichments.df[enrichments.df<2]<-0
+enrichments.df %<>% group_by(label, factor) %>%
+            mutate(normalized_enrichment = pmax(0, pmin(1, enrichment / quantile(enrichment, 0.80))))
+
+enrichments.df %<>% filter(fb_tx_id %in% promoter.df$fb_tx_id)	
+
+
+		
+enrichments.df %<>% filter(label %in% c("early","late"))
+
+saveRDS(enrichments.df, file=figure_path("polII_by_group.df.rds"))
+
+```
+
+## Pol II heatmap early late
+
+```{r polII_heatmap, dev=c("png","pdf"), fig.width=14, fig.height=10}
+
+enrichments.df %>% as.data.frame %>% mutate(label=paste0(label,".",factor)) %>% 
+			dplyr::select(fb_tx_id,label,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment) %>% 
+			dplyr::select(fb_tx_id,early.polii,late.polii) -> values.df
+
+build_heatmap_plot <- function(groups) {
+  heatmap.df <- groups %>%
+                lapply(function(tx_ids) {
+                  subset(values.df, fb_tx_id %in% tx_ids)
+                }) %>%
+                bind_rows(.id="group_name") %>% gather(time,enrichment,-group_name,-fb_tx_id) 
+
+
+  heatmap.df$time%<>% factor(levels=c("early.polii","late.polii"))
+  
+  heatmap.df$group_name%<>% factor(levels=c("Opening","Constant"))
+  heatmap.df$fb_tx_id%<>% factor(levels=heatmap.df$fb_tx_id %>% unique)
+  heatmap.df%<>%{.[order(.$fb_tx_id),]}
+  
+  g <- ggplot(heatmap.df, aes(x=time, y=fb_tx_id, fill=enrichment)) +
+       geom_tile() +
+       scale_fill_gradient("Pol II enrichment", high="#3d5782", low="white") +
+       facet_grid(group_name ~ ., scales="free_y", space="free_y") +
+       theme_bw() +
+       labs(x="", y="") +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+  
+  list(plot=g, data=heatmap.df)
+}
+
+heatmap_all   <- list(Opening = late.df$fb_tx_id, Constant = nochange.df$fb_tx_id) %>% build_heatmap_plot
+heatmap_all$plot
+saveRDS(heatmap_all, file=figure_path("heatmap_all.lst.rds"))
+
+
+```
+
+``` {r lola_motif, dev=c("png","pdf")}
+txs.gr <- flybase_txs_granges()
+
+txs.gr %>% as.data.frame %>% filter(fb_tx_id %in% nochange.df$fb_tx_id) %>% GRangesFromDataFrames -> nochange.gr
+nochange.gr$change<-"Constant"
+txs.gr %>% as.data.frame %>% filter(fb_tx_id %in% late.df$fb_tx_id) %>% GRangesFromDataFrames -> late.gr
+late.gr$change<-"Opening"
+promoter.gr<-c(nochange.gr,late.gr)
+promoter.gr %<>% resize(fix="start",width=100) %>% resize(fix="end",width=300)
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+mcols(promoter.gr)$lola_motif<-countOverlaps(promoter.gr,lola_g_match,ignore.strand=TRUE)
+#promoter.gr$lola_motif[promoter.gr$lola_motif>1]<-1
+
+
+ promoter.df<-promoter.gr %>% as.data.frame
+
+pairwise.wilcox.test(promoter.df$lola_motif,promoter.df$change,p.adjust='hochberg')	 
+			 
+    build_heatmap_plot <- function(groups,promoter.df) {
+
+      heatmap.df <- groups %>%
+   						     lapply(function(tx_ids) {
+   						                   promoter.df %>%
+   						                     filter(fb_tx_id %in% tx_ids) %>%
+   						                     dplyr::select(fb_tx_id, lola_motif) %>% 
+   											 gather(motifs, Number_of_motifs, -fb_tx_id)
+   						                 }) %>%
+   						      bind_rows(.id="group_name")
+  
+  
+
+heatmap_order<-heatmap_all %>% `$`(data)
+heatmap.df$fb_tx_id%<>% factor(levels=heatmap_order$fb_tx_id %>% unique)
+heatmap.df$group_name%<>% factor(levels=c("Opening","Constant"))
+
+          g <- ggplot(heatmap.df, aes(x=motifs, y=fb_tx_id, fill=Number_of_motifs)) +
+       geom_tile() +
+       scale_fill_gradient("Motif enrichment", high="red", low="white") +
+       facet_grid(group_name ~ ., scales="free_y", space="free_y") +
+       theme_bw() +
+       labs(x="", y="") +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+
+list(plots=g, data=heatmap.df)
+}
+		 
+			heatmap   <- split(promoter.df$fb_tx_id, promoter.df$change) %>% build_heatmap_plot(promoter.df)
+
+	  	heatmap$plots
+
+
+
+
+````
+
+``` {r session_info_child, child="/lola_paper/aws/analysis/child_docs/session_info_child.Rmd"}
+```

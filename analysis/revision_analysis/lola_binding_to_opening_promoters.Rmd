@@ -1,0 +1,86 @@
+# Lola binding to opening promoters
+
+``` {r header_child, child="/lola_paper/aws/analysis/child_docs/header_child.Rmd"}
+```
+``` {r setup, echo=FALSE, message=FALSE, results="hide"}
+options(knitr.figure_dir = "lola_binding_to_opening_promoters")
+library(GenomicRanges)
+library(plyr)
+library(magrittr)
+library(ggplot2)
+library(reshape2)
+library(DESeq2)
+library(doMC)
+library(dplyr)
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+source("/lola_paper/aws/analysis/shared/tf_motif_enrichments.r")
+
+#pcutoff=0.01
+````
+
+```{r libraries, include=FALSE} 
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+````
+
+````{r}
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("/lola_paper/aws//bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("/lola_paper/aws//bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+}
+
+```{r load_gene_groups_and_further_sub_group, include=TRUE, echo=TRUE, message=TRUE}
+
+
+comparisson_groups.lst <-readRDS("/lola_paper/aws/analysis/figure1b_enrichments/comparisson_groups.lst.rds")
+
+
+txs.gr<-flybase_txs_granges()
+
+late.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$late.df)$fb_tx_id] %>% resize(fix="start",width=1) %>% resize(fix="end",width=200)
+
+nochange.gr <- txs.gr[txs.gr$fb_tx_id %in% (comparisson_groups.lst$nochange.df)$fb_tx_id] %>% resize(fix="start",width=1) %>% resize(fix="end",width=200)
+
+groups <- readRDS("/lola_paper/aws/analysis/figure1e_lola_targets_heatmap/groups.rds")
+
+sum(late.gr$fb_gene_id %in% txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% groups$lola_promoters])
+
+sum(late.gr$fb_gene_id %in% {get_lola_peaks(number = 750)}$nearest_gene_id)
+length({get_lola_peaks(number = 750)}$nearest_gene_id)
+sum(late.gr$fb_gene_id %in% {get_lola_peaks(number = 1000)}$nearest_gene_id)
+length({get_lola_peaks(number = 1000)}$nearest_gene_id)
+sum(late.gr$fb_gene_id %in% {get_lola_peaks(number = 1500)}$nearest_gene_id)
+length(late.gr$fb_gene_id)
+length({get_lola_peaks(number = 1500)}$nearest_gene_id)
+
+sum(nochange.gr$fb_gene_id %in% {get_lola_peaks(number = 750)}$nearest_gene_id)
+sum(nochange.gr$fb_gene_id %in% {get_lola_peaks(number = 1000)}$nearest_gene_id)
+sum(nochange.gr$fb_gene_id %in% {get_lola_peaks(number = 1500)}$nearest_gene_id)
+
+sum(nochange.gr$fb_gene_id %in% txs.gr$fb_gene_id[txs.gr$fb_tx_id %in% groups$lola_promoters])
+
+length(nochange.gr$fb_gene_id)
+````
+
+````
+``` {r session_info, echo=FALSE, comment=NA}
+sessionInfo()
+```

@@ -1,0 +1,34 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+
+library(xtable)
+library(Biostrings)
+library(GenomicRanges)
+library(BSgenome.Dmelanogaster.UCSC.dm6)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+````
+``` {r header_child, child="../child_docs/header_child.Rmd"}
+```
+``` {r}
+
+import("/lola_paper/aws/bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:1000]}
+
+lola_pi_peaks.gr <- lola_peaks_1.gr
+
+lola_pi_peaks.gr <- resize(lola_pi_peaks.gr, width=200, fix="center")
+lola_pi_peaks.gr
+
+
+peaks.seq <- getSeq(Dmelanogaster, lola_pi_peaks.gr)
+names(peaks.seq) <- paste0("peak_", 1:length(peaks.seq))
+writeXStringSet(peaks.seq, filepath="macs_peaks_lola_pi_top750_200bp_14_17h.fasta")
+
+
+
+# meme macs_peaks_lola_pi_14_17.fasta -oc macs_peaks_lola_pi_meme_output_14_17 -p 10 -mod zoops -dna -nmotifs 10 -revcomp -maxw 12 -maxsize 5000000
+```
+
+``` {r session_info_child, child="../child_docs/session_info_child.Rmd"}

@@ -1,0 +1,224 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+# Output folder for this document
+options(knitr.figure_dir = "lola_targets_heatmap_mut")
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+source("/lola_paper/aws/analysis/shared/tf_motif_enrichments.r")
+cores_to_use<-8;
+path_to_data_1 <- "/lola_paper/aws/bw"
+
+
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+```
+
+# Calculating Lola binding at Late promoters
+
+``` {r header_child, child="/lola_paper/aws/analysis/child_docs/header_child.Rmd"}
+```
+
+``` {r Lola_promoters, dev=c("png","pdf"), include=TRUE, echo=TRUE, message=TRUE}
+comparisson_groups.lst<-readRDS("/lola_paper/aws/analysis/figure1b_enrichments/comparisson_groups.lst.rds")
+
+groups <- readRDS("/lola_paper/aws/analysis/figure1e_lola_targets_heatmap/groups.rds")
+
+
+enrichments.df = readRDS(file=("/lola_paper/aws/analysis/figure1h_lola_targets_heatmap_mut/normalized_enrichments.df.rds"))
+
+mnase_enrichments.df = readRDS(file=("/lola_paper/aws/analysis/figure2e_lola_targets_heatmap_MNase_mut//normalized_enrichments.df.rds"))
+````
+
+```{r heatmap, dev=c("png","pdf"),fig.width=14, fig.height=10, include=TRUE, echo=TRUE, message=TRUE}
+
+
+order_build_heatmap_plot <- function(i,groups,enrichments.df,ord) {
+  
+  enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment)   -> values.df
+  
+  values.df$change = values.df$mut-values.df$wt
+  values.df$fb_tx_id[order(values.df$change)]
+  
+}
+  
+build_heatmap_plot <- function(i,groups,enrichments.df,ord,factor_levels_x) {
+  
+  
+  enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment)   -> values.df
+  
+  
+  heatmap.df <- groups %>%
+                lapply(function(tx_ids) {
+                  subset(values.df, fb_tx_id %in% tx_ids)
+                }) %>%
+                bind_rows(.id="group_name") %>% gather(time,enrichment,-group_name,-fb_tx_id,-factor,-color) 
+
+  heatmap.df$group_name%<>%factor(levels=c("lola_promoters","control"))
+  heatmap.df <- heatmap.df[heatmap.df$time %in% factor_levels_x,]
+  heatmap.df$time %<>% factor(levels=factor_levels_x)
+  heatmap.df$fb_tx_id%<>% factor(levels=(ord %>% unique))
+  heatmap.df%<>% {.[order(.$fb_tx_id),]} ->heatmap.df
+  
+  g <- ggplot(heatmap.df, aes(x=time, y=fb_tx_id, fill=enrichment)) +
+       geom_tile() +
+       scale_fill_gradient(heatmap.df$factor[1], high=heatmap.df$color[1] %>% as.character %>% gsub('\"',"",.,fixed=T), low= "white") +
+       facet_grid(group_name ~ ., scales="free_y", space="free_y") +
+       theme_bw() +
+       labs(x="", y="") +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+  
+  g
+}
+
+
+"polii" %>% order_build_heatmap_plot(.,groups,enrichments.df) -> ord
+
+factor_levels_x = c("wt","mut")
+enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,enrichments.df,ord,factor_levels_x)
+
+factor_levels_x = c("wt_14-17h","orc4_14-17h")
+mnase_enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,mnase_enrichments.df,ord,factor_levels_x)
+
+```
+
+```{r heatmap_ord_by_mnase, dev=c("png","pdf"),fig.width=14, fig.height=10, include=TRUE, echo=TRUE, message=TRUE}
+
+
+order_build_heatmap_plot <- function(i,groups,enrichments.df,ord) {
+  
+  enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment)   -> values.df
+  
+  values.df$change = values.df["wt_14-17h"]-values.df["orc4_14-17h"]
+  values.df$fb_tx_id[order(values.df$change)]
+  
+}
+  
+build_heatmap_plot <- function(i,groups,enrichments.df,ord,factor_levels_x) {
+  
+  
+  enrichments.df %>% filter(factor == i) %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,normalized_enrichment) %>% 
+			spread(key= label, value = normalized_enrichment)   -> values.df
+  
+  
+  heatmap.df <- groups %>%
+                lapply(function(tx_ids) {
+                  subset(values.df, fb_tx_id %in% tx_ids)
+                }) %>%
+                bind_rows(.id="group_name") %>% gather(time,enrichment,-group_name,-fb_tx_id,-factor,-color) 
+
+  heatmap.df$group_name%<>%factor(levels=c("lola_promoters","control"))
+  heatmap.df <- heatmap.df[heatmap.df$time %in% factor_levels_x,]
+  heatmap.df$time %<>% factor(levels=factor_levels_x)
+  heatmap.df$fb_tx_id%<>% factor(levels=(ord %>% unique))
+  heatmap.df%<>% {.[order(.$fb_tx_id),]} ->heatmap.df
+  
+  g <- ggplot(heatmap.df, aes(x=time, y=fb_tx_id, fill=enrichment)) +
+       geom_tile() +
+       scale_fill_gradient(heatmap.df$factor[1], high=heatmap.df$color[1] %>% as.character %>% gsub('\"',"",.,fixed=T), low= "white") +
+       facet_grid(group_name ~ ., scales="free_y", space="free_y") +
+       theme_bw() +
+       labs(x="", y="") +
+       scale_x_discrete(expand=c(0, 0)) +
+       scale_y_discrete(expand=c(0, 0)) +
+       theme(axis.text.y=element_blank(),
+             axis.ticks=element_blank(),
+             panel.grid.major=element_blank(),
+             panel.grid.minor=element_blank(),
+             axis.text.x=element_text(angle=45, vjust=1, hjust=1))
+  
+  g
+}
+
+
+"Mnase" %>% order_build_heatmap_plot(.,groups,mnase_enrichments.df) -> ord
+
+factor_levels_x = c("wt","mut")
+enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,enrichments.df,ord,factor_levels_x)
+
+factor_levels_x = c("wt_14-17h","orc4_14-17h")
+mnase_enrichments.df$factor %>% unique %>% lapply(build_heatmap_plot,groups,mnase_enrichments.df,ord,factor_levels_x)
+
+```
+
+```{r}
+enrichments.df %>% filter(factor == "polii") %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,enrichment) %>% 
+			spread(key= label, value = enrichment)   -> values.df
+values.df$change = values.df$mut/values.df$wt
+summary(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])
+
+enrichments.df %>% filter(factor == "ATAC") %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,enrichment) %>% 
+			spread(key= label, value = enrichment)   -> values.df
+values.df$change = values.df$mut/values.df$wt
+summary(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])
+
+mnase_enrichments.df %>% filter(factor == "Mnase") %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,enrichment) %>% 
+			spread(key= label, value = enrichment)   -> values.df
+values.df$change = (values.df[,"orc4_14-17h"]/values.df[,"wt_14-17h"])
+summary(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])
+
+values.df$change = (values.df[,"wt_2-4h"]/values.df[,"wt_14-17h"])
+summary(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])
+
+
+txs.gr<-flybase_txs_granges()
+
+values.df$fb_tx_id[values.df$fb_tx_id %in% groups$lola_promoters][(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])<1]
+
+```
+
+```{r}
+txs.gr<-flybase_txs_granges()
+fimo.gr <- updateObject(readRDS("/lola_paper/aws/external_data/fimo/dm6.matches.granges.rds"))
+
+enrichments.df %>% filter(factor == "polii") %>% as.data.frame %>%  
+			dplyr::select(fb_tx_id,label,factor,color,enrichment) %>% 
+			spread(key= label, value = enrichment)   -> values.df
+values.df$change = values.df$mut/values.df$wt
+
+down_genes <- values.df$fb_tx_id[values.df$fb_tx_id %in% groups$lola_promoters][(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])<1]
+
+other_genes <- values.df$fb_tx_id[values.df$fb_tx_id %in% groups$lola_promoters][(values.df$change[values.df$fb_tx_id %in% groups$lola_promoters])>=1]
+
+down_genes.gr <- txs.gr[txs.gr$fb_tx_id %in% down_genes] %>% resize(fix="start",width=50) %>% resize(fix="end",width=500)
+
+other_genes.gr <- txs.gr[txs.gr$fb_tx_id %in% other_genes] %>% resize(fix="start",width=50) %>% resize(fix="end",width=500)
+
+library(plyr)
+
+down_other.df<-significant_motifs(down_genes.gr,other_genes.gr,fimo.gr,cutoff=0.1)
+down_other.df
+write.table(down_other.df, file=figure_path("down_other_motif_enrichments.xls"), sep="\t", row.names=F, col.names=T, quote=F)
+
+```
+
+``` {r session_info_child, child="/lola_paper/aws/analysis/child_docs/session_info_child.Rmd"}
+```

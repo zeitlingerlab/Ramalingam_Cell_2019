@@ -59,6 +59,7 @@ motif_count_comparison <- function(set1.df, set2.df) {
     e_set_notest.df <- set_notest.df
     e_set_notest.df$test_type <- "enrichment"
     
+    d_set_notest.df <- set_notest.df
     d_set_notest.df$pvalue <- 1
     d_set_notest.df$test_type <- "depletion"
     

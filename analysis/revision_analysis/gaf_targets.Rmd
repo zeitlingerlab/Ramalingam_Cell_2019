@@ -1,0 +1,87 @@
+``` {r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(pander)
+
+library(matrixStats)
+library(GOstats)
+library(org.Dm.eg.db)
+library(dplyr)
+library(cowplot)
+
+
+# Output folder for this document
+options(knitr.figure_dir = "gaf_targets")
+
+source("/lola_paper/aws/analysis/shared/promoter_element_enrichments.r")
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+cores_to_use<-8;
+path_to_data_1 <- "/lola_paper/aws/bw/"
+
+get_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("/lola_paper/aws/bed/gaf_14_17h/gaf_peaks_14_17h_1_summits.bed") %>% resize(fix='center',width=200) ->peaks_1.gr   
+
+peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+peaks.gr <- peaks_1.gr %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+peaks.gr%<>%assign_nearest_gene(.)
+peaks.gr$location<-'distal'
+peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+peaks.gr%<>%.[.$location %in% location]
+peaks.gr
+}
+
+get_peaks_frequency<-function(number=1000,bw1= "/lola_paper/aws/bed/gaf_14_17h/gaf_peaks_14_17h_1_summits.bed", promoter_width =500,upstream=50){
+
+
+import(bw1) %>% resize(fix='center',width=200) ->peaks_1.gr   
+peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+get_pro_distal_prop_table <-function(peaks.gr,promoter_width=promoter_width){
+
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+peaks.gr%<>%assign_nearest_gene(.)
+peaks.gr$location<-'distal'
+peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(peaks.gr) %>% subjectHits]<-'promoter'
+peaks.gr$location %>% table %>% prop.table ->prop_table
+prop_table }
+
+((get_pro_distal_prop_table(peaks_1.gr,promoter_width=promoter_width))) %>% as.data.frame %>% {names(.)<-c("Location","Frequency");.}
+
+}
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+
+
+```
+
+# Calculating freqency of Gaf binding at promoters
+
+``` {r header_child, child="../child_docs/header_child.Rmd"}
+```
+
+``` {r Lola_promoters, dev=c("png","pdf")}
+
+
+get_peaks_frequency(number=1000,promoter_width=500,upstream=50)
+
+
+````
+
+``` {r session_info_child, child="../child_docs/session_info_child.Rmd"}
+```

@@ -12,6 +12,7 @@ library(dplyr)
 library(tidyr)
 library(doMC)
 library(Hmisc)
+library(plyr)
 
 # Output folder for this document
 options(knitr.figure_dir = "figure3e_mnase_boxplot_lola_distance")

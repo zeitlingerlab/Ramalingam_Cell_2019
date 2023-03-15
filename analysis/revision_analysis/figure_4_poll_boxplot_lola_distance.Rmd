@@ -1,0 +1,284 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, echo=FALSE, message=FALSE, include=FALSE, error=FALSE}
+library(ggplot2)
+
+library(magrittr)
+library(matrixStats)
+library(gtools)
+
+library(GenomicRanges)
+library(rtracklayer)
+library(parallel)
+library(dplyr)
+library(tidyr)
+library(doMC)
+library(Hmisc)
+library(cowplot)
+
+
+# Output folder for this document
+options(knitr.figure_dir = "figure_4_polii_boxplot_lola_distance")
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/metagene_common.r")
+
+
+knitr::opts_chunk$set(dev=c("png", "pdf"))
+
+source("/lola_paper/aws/analysis/shared/knitr_common.r")
+source("/lola_paper/aws/analysis/shared/granges_common.r")
+source("/lola_paper/aws/analysis/shared/flybase.r")
+
+cores_to_use<-32;
+path_to_data_1<-"../../bw";
+
+assign_nearest_gene <- function(gr, txs.gr=flybase_txs_granges(), overlapping_gene_takes_precedence=TRUE) {
+  
+  tss.gr <- resize(txs.gr, 1)
+  
+  dtn      <- as.data.frame(distanceToNearest(gr, tss.gr, ignore.strand=TRUE))
+  dtn.gene <- subset(as.data.frame(distanceToNearest(gr, txs.gr, ignore.strand=TRUE)), distance == 0)
+  
+  mcols(gr)$nearest_gene_id <- ""
+  mcols(gr)$nearest_gene    <- ""
+  mcols(gr)$distance_to_tss <- NA
+  mcols(gr)$inside_gene <- ""
+  
+  if(overlapping_gene_takes_precedence){
+    mcols(gr)$nearest_gene_id[dtn$queryHits] <- mcols(tss.gr)$fb_gene_id[dtn$subjectHits]
+    mcols(gr)$nearest_tx_id[dtn$queryHits] <- mcols(tss.gr)$fb_tx_id[dtn$subjectHits]
+    mcols(gr)$nearest_gene[dtn$queryHits]    <- mcols(tss.gr)$fb_symbol[dtn$subjectHits]
+    mcols(gr)$inside_gene[dtn$queryHits] <- FALSE
+    mcols(gr)$distance_to_tss[dtn$queryHits] <- dtn$distance
+    
+    mcols(gr)$nearest_gene_id[dtn.gene$queryHits] <- mcols(txs.gr)$fb_gene_id[dtn.gene$subjectHits]
+    mcols(gr)$nearest_gene[dtn.gene$queryHits]    <- mcols(txs.gr)$fb_symbol[dtn.gene$subjectHits]
+    mcols(gr)$inside_gene[dtn.gene$queryHits] <- TRUE
+    mcols(gr)$distance_to_tss[dtn.gene$queryHits] <- dtn$distance[match(dtn.gene$queryHits, dtn$queryHits)]
+    
+    gr
+  }
+  else{
+    mcols(gr)$nearest_gene_id[dtn$queryHits] <- mcols(tss.gr)$fb_gene_id[dtn$subjectHits]
+    mcols(gr)$nearest_tx_id[dtn$queryHits] <- mcols(tss.gr)$fb_tx_id[dtn$subjectHits]
+    mcols(gr)$nearest_gene[dtn$queryHits]    <- mcols(tss.gr)$fb_symbol[dtn$subjectHits]
+    mcols(gr)$inside_gene[dtn$queryHits] <- FALSE
+    mcols(gr)$distance_to_tss[dtn$queryHits] <- dtn$distance
+    
+    mcols(gr)$inside_gene[dtn.gene$queryHits] <- TRUE
+
+    gr
+  }
+}
+
+get_lola_peaks<-function(location="promoter",number=1000,promoter_width=500,upstream=50){
+
+import("../../bed/lola_i_peaks_1_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_1.gr   
+import("../../bed/lola_i_peaks_2_summits.bed") %>% resize(fix='center',width=200) ->lola_peaks_2.gr
+lola_peaks_1.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+lola_peaks_2.gr%<>%{.[order(.$score,decreasing=TRUE)][1:number]}
+
+lola_peaks.gr <- lola_peaks_1.gr[findOverlaps(lola_peaks_1.gr,lola_peaks_2.gr) %>% queryHits %>% unique()] %>% resize(fix='center',width=1)
+valid.chrs<-c("chr2L","chr2R","chr3L","chr3R","chrX","chr4")
+lola_peaks.gr%<>%keepSeqlevels(valid.chrs,pruning.mode="coarse")
+lola_peaks.gr%<>%assign_nearest_gene(.)
+lola_peaks.gr$location<-'distal'
+lola_peaks.gr$location[flybase_txs_granges() %>% resize(fix='start',width=upstream) %>% resize(fix='end',width=promoter_width-upstream) %>% findOverlaps(lola_peaks.gr) %>% subjectHits]<-'promoter'
+lola_peaks.gr%<>%.[.$location %in% location]
+lola_peaks.gr
+
+}
+
+filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
+  g_match<-vmatchPattern(pattern=motif,subject=Dmelanogaster,max.mismatch=mismatch)
+  mcols(gr)$motif<-countOverlaps(gr,g_match,ignore.strand=ignore_strand)
+  gr<-gr[gr$motif>=1]
+  gr
+}
+
+GRangesFromDataFrames<-function(dataframe){with(dataframe,GRanges(IRanges(start=start,end=end),seqnames=seqnames,strand=strand,dataframe%>%dplyr::select(-strand,-start,-end,-seqnames,-width)))}
+```
+
+
+
+Look at pol II changes vs lola binding distance
+
+# Calculating Pol II enrichments
+
+``` {r header_child, child="../child_docs/header_child.Rmd"}
+```
+
+## Samples overview
+
+We will calculate the pol II enrichments for the following samples
+``` {r samples_table}
+samples.df <- read.csv("../data/figure1b_polII_data.csv", stringsAsFactors=FALSE)
+samples.df %>% pander
+```
+
+## load the samples
+
+``` {r functions, include=FALSE}
+
+locate_bigwig <- function(name) {
+    path1 <- file.path(path_to_data_1, name)
+    if(file.exists(path1)) return(path1)
+  path2 <- file.path(path_to_data_2, name)
+  if(file.exists(path2)) return(path2)
+  stop("Cannot find bigwig: ", name)
+}
+
+enrichments_for_sample <- function(i, samples.df, txs.gr) {
+  sample.bw <- locate_bigwig(samples.df$ip[i])
+  wce.bw    <- locate_bigwig(samples.df$wce[i])
+
+  label <- samples.df$label[i]
+  factor_type <- samples.df$factor[i]
+  
+  regions.gr <- promoters(txs.gr, upstream=samples.df$window_upstream[i], downstream=samples.df$window_downstream[i])
+  
+  mcols(txs.gr)$region_ip  <- regionSums(regions.gr, sample.bw)
+  mcols(txs.gr)$region_wce <- regionSums(regions.gr, wce.bw)
+
+  mcols(txs.gr)$ip_total <- total_signal(sample.bw)
+  mcols(txs.gr)$wce_total <- total_signal(wce.bw)
+
+  mcols(txs.gr)$region_wce_min_coverage <- regionMins(regions.gr, wce.bw)
+
+  mcols(txs.gr)$label <- label
+  mcols(txs.gr)$factor <- factor_type
+
+  txs.gr
+}
+
+txs.gr <- flybase_txs_granges() %>% filter_chrs
+
+  data.df <- 1:nrow(samples.df) %>%
+                 mclapply(enrichments_for_sample, samples.df, txs.gr, mc.cores=cores_to_use, mc.preschedule=FALSE) %>%
+                 lapply(as.data.frame) %>%
+                 bind_rows 
+  data.df
+
+```
+
+## Calculate enrichments
+
+Before calculating enrichment, we floor the WCE signal for each region at the median WCE signal level among all transcripts.
+
+``` {r calculate_enrichments, include=FALSE}
+
+enrichments.df <- data.df %>% 
+                      group_by(label, factor) %>%
+                      mutate(median_region_wce = median(region_wce))
+
+enrichments.df %<>% transform(enrichment = (region_ip / ip_total) / (pmax(region_wce, median_region_wce) / wce_total))
+
+tss.infs <- which(is.infinite(enrichments.df$enrichment))
+
+min.tss <- with(enrichments.df, min(enrichment[is.finite(enrichment)]))
+
+if(length(tss.infs) > 0) enrichments.df$enrichment[tss.infs] <- min.tss
+
+enrichments.df %>%
+  ungroup %>%
+  dplyr::select(fb_tx_id, fb_gene_id, fb_symbol, enrichment, factor, label) -> pol.df
+
+```
+
+```{r load_data}
+
+promoter.gr<-flybase_txs_granges()
+promoter.gr %<>% resize(fix="start",width=1) %>% resize(fix="end",width=500)
+
+lola_peaks.gr<-get_lola_peaks(location=c("promoter","distal"),number=750)
+
+lola_peaks.gr %<>% resize(fix='center',width=500)
+
+lola_g_match<-vmatchPattern(pattern="AAAGCTY",subject=Dmelanogaster,max.mismatch=0,fixed=FALSE)
+
+mcols(lola_peaks.gr)$lola_motif<-countOverlaps(lola_peaks.gr,lola_g_match,ignore.strand=TRUE)
+lola_peaks.gr<-lola_peaks.gr[lola_peaks.gr$lola_motif>=1]
+
+promoter.gr[promoter.gr$fb_tx_id %in% lola_peaks.gr$nearest_tx_id] ->lola_peaks_with_motif.gr
+
+merge((lola_peaks_with_motif.gr %>% as.data.frame),lola_peaks.gr %>% as.data.frame %>% dplyr::select(fb_gene_id=nearest_gene_id,distance_to_tss)) %>% GRangesFromDataFrames ->lola_peaks_with_motif.gr
+
+pol.df %<>% spread(key=label, value=enrichment)	%>%
+	 mutate(early=rowMeans(cbind(early_1,early_2)),late=rowMeans(cbind(late_1,late_2,late_3))) %>%
+	  dplyr::select(-early_1,-early_2,-late_1,-late_2,-late_3) %>%
+	   gather(label,enrichment,-1:-4)
+
+lola_peaks_with_motif.gr %>% as.data.frame ->promoter.df
+
+pol.df$enrichment[pol.df$enrichment<4]<-0
+
+pol.df %<>% as.data.frame %>% mutate(label=paste0(label,".",factor)) %>%  
+			spread(key= label, value = enrichment) %>% 
+		 	 	group_by(fb_gene_id) %>% 
+		 	 	dplyr::summarise(fb_tx_id  = fb_tx_id[which.max(late.polii)]) %>%
+		 	 	 `$`(fb_tx_id) %>% { subset(pol.df, subset = fb_tx_id %in% .) }
+pol.df %<>% group_by(label, factor) %>%
+            dplyr::mutate(normalized_enrichment = pmax(0, pmin(1, enrichment / quantile(enrichment, 0.95))))
+
+		
+pol.df %<>% filter(label %in% c("early","late"))
+
+saveRDS(pol.df, file=figure_path("polII_by_group.df.rds"))
+
+```
+
+## Poll II changes based on distance bewtween lola binding site to TSS
+
+```{r tissue_heatmap, fig.width=14, fig.height=10}
+
+pol.df %>% as.data.frame %>% mutate(label=paste0(label,".",factor)) %>% 
+			dplyr::select(fb_tx_id,label,enrichment) %>% 
+			spread(key= label, value = enrichment) %>% 
+			dplyr::select(fb_tx_id,early.polii,late.polii) -> values.df
+
+promoter.df %<>% {.[.$fb_tx_id %in% pol.df$fb_tx_id,]}
+
+saveRDS(promoter.df, file=figure_path("lola_peaks_with_motif.df.rds"))
+
+promoter.df$group[promoter.df$distance_to_tss<50]<-'<50'
+promoter.df$group[promoter.df$distance_to_tss<100 & promoter.df$distance_to_tss>=50]<-'50-100'
+promoter.df$group[promoter.df$distance_to_tss<250 & promoter.df$distance_to_tss>=100]<-'100-250'
+promoter.df$group[promoter.df$distance_to_tss<500 & promoter.df$distance_to_tss>=250]<-'250-500'
+promoter.df$group[promoter.df$distance_to_tss>500]<-'>500'
+
+build_boxplot <- function(groups,values.df) {
+
+	boxplot.df <- groups %>%
+                lapply(function(tx_ids) {
+                subset(values.df, fb_tx_id %in% tx_ids) %>%
+                mutate(pol_diff=late.polii-early.polii) 
+                }) %>%
+                bind_rows(.id="group_name") %>%
+	              gather(time,pol_diff,-group_name,-fb_tx_id,-early.polii,-late.polii) 
+
+	boxplot.df$group_name%<>% factor(levels=c("<50","50-100",'100-250','250-500','>500'))
+
+  g <- ggplot(boxplot.df, aes(x=group_name,y=pol_diff)) +	geom_boxplot(fill="white") + 
+  			      theme_cowplot()
+              
+  			  list(plots=list(g), data=boxplot.df)
+  }
+
+boxplot_all   <- split(promoter.df$fb_tx_id,promoter.df$group) %>% build_boxplot(values.df)
+boxplot_all$plots
+
+saveRDS(boxplot_all, file=figure_path("boxplot_all.lst.rds"))
+
+boxplot_all[[2]] %>% {pairwise.wilcox.test(.$pol_diff,.$group_name,p.adj = "bonf")}
+
+```
+
+
+``` {r session_info_child, child="../child_docs/session_info_child.Rmd"}
+```

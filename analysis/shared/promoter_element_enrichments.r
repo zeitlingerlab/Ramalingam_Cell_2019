@@ -2,7 +2,7 @@ library(ggplot2)
 library(scales)
 library(dplyr)
 
-source("shared/stat_tests.r")
+source("/lola_paper/aws/analysis/shared/stat_tests.r")
 
 load_promoter_elements <- function(file="promoter_elements/pe.0mm.RData") {
   get(load(file))

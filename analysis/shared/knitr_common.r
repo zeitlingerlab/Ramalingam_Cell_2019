@@ -30,4 +30,4 @@ knitr::opts_chunk$set(fig.width=7, fig.height=5, fig.path=figure_path())
 # Create output directory if it doesn't exist
 if(!file.exists(getOption("knitr.figure_dir"))) dir.create(getOption("knitr.figure_dir"))
 
-source("shared/parallel.r")
+source("/lola_paper/aws/analysis/shared/parallel.r")

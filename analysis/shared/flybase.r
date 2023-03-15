@@ -2,7 +2,7 @@ library(GenomicRanges)
 library(BSgenome.Dmelanogaster.UCSC.dm6)
 
 flybase_txs <- function() {
-  txs <- readRDS("flybase/fb.transcripts.r6.21.rds")
+  txs <- readRDS("/lola_paper/aws/analysis/flybase/fb.transcripts.r6.21.rds")
   valid.chrs <- c("chr2L", "chr2R", "chr3L","chr3R", "chr4", "chrX")
   txs <- subset(txs, chr %in% valid.chrs)
   txs
