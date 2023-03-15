@@ -148,7 +148,7 @@ filter_for_motif<-function(gr,motif,mismatch=0,ignore_strand=TRUE){
 }
 
 
-lola_peaks.gr<-get_lola_peaks(c("promoter","distal"),1000) %>% resize(fix='center',width=200) %>% filter_for_motif(motif="AAAGCTY")
+lola_peaks.gr<-get_lola_peaks(c("promoter","distal"),750) %>% resize(fix='center',width=200) %>% filter_for_motif(motif="AAAGCTY")
 
 rnaseq$group<-'others'
 lola_promoters <- {lola_peaks.gr %>% as.data.frame %>% filter(location=='promoter') %>% .$nearest_gene_id}
